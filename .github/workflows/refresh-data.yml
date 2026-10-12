@@ -1,0 +1,123 @@
+name: Refresh data
+
+# Isolated unattended snapshot restore/refresh/validate/bundle preparation.
+#
+# Regulatory information, not legal advice.
+#
+# This replaces the old "fetch into the live checkout" job. It runs the
+# maintained orchestration script (data/scripts/refresh_isolated.py) which:
+#   * restores a TRUSTED baseline snapshot bundle into a run-owned work dir
+#     (verified against an independently supplied SHA-256) and never touches the
+#     live checkout's raw/processed snapshot;
+#   * refreshes sources ONLY inside that isolated tree, preserving each source's
+#     accepted coverage when a fetch fails / returns HTML / is unparseable;
+#   * validates the complete candidate (provenance, hashes, SQLite/JSONL parity,
+#     coverage) and produces a reviewable source/rule/coverage diff;
+#   * for a genuine change, exports a verified consumer-compatible snapshot ZIP
+#     + SHA-256 + concise manifest/diff.
+#
+# Durable PUBLICATION (moving the verified bundle to a hosted, trusted URL and
+# updating the consumer's expected digest together) is deliberately NOT done
+# here and is a separate, manually-controlled, documented step. This workflow
+# produces a verified candidate artifact and uploads it for review only after
+# validation; it does not fabricate a release URL or treat an upload as
+# published. Actual hosted acceptance remains unrun.
+
+on:
+  schedule:
+    # Weekly refresh (each Monday at 03:00 UTC) of official exports.
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+# Minimal permissions: read the repo only; write/publish nothing.
+permissions:
+  contents: read
+
+# Concurrency protection: only one refresh publication-preparation run at a
+# time per ref, so two runs cannot race over a run-owned work dir or bundle.
+concurrency:
+  group: "eu-reg-snapshot-refresh"
+  cancel-in-progress: false
+
+env:
+  # Trusted maintainer configuration. Set these as repository variables:
+  #   SNAPSHOT_BASELINE_URL     — URL to the accepted, verified baseline bundle.
+  #   SNAPSHOT_BASELINE_SHA256  — independently-trusted SHA-256 of that bundle.
+  #   SNAPSHOT_OUTPUT_FOLDER    — upload artifact name / folder for the candidate.
+  SNAPSHOT_BASELINE_URL: ${{ vars.SNAPSHOT_BASELINE_URL }}
+  SNAPSHOT_BASELINE_SHA256: ${{ vars.SNAPSHOT_BASELINE_SHA256 }}
+  SNAPSHOT_OUTPUT_FOLDER: ${{ vars.SNAPSHOT_OUTPUT_FOLDER || 'candidate-snapshot' }}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
+
+      - name: Restore and refresh isolated snapshot
+        id: refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="${RUNNER_TEMP}/eu-snapshot-work"
+          OUT="${RUNNER_TEMP}/${SNAPSHOT_OUTPUT_FOLDER}"
+          AUDIT="${RUNNER_TEMP}/refresh-audit"
+          # Delegate the whole run block to the SHARED executable step body so the
+          # local audit-retention test and the workflow run the SAME logic (no
+          # copied bash block to drift). It initializes the reviewable audit path
+          # BEFORE any preflight check, retains a failure/outcome audit for every
+          # exit, preserves the documented non-zero failure status, and never
+          # writes a candidate artifact on no-change/failure.
+          LIVE=1 PY="${pythonLocation}/bin/python" SCRIPT="$PWD/data/scripts/refresh_isolated.py" \
+            WORK="${WORK}" OUT="${OUT}" URL="${SNAPSHOT_BASELINE_URL}" EXPECTED="${SNAPSHOT_BASELINE_SHA256}" \
+            AUDIT="${AUDIT}" GITHUB_OUTPUT="${GITHUB_OUTPUT}" \
+            bash "$PWD/data/scripts/refresh_workflow_step.sh"
+
+      - name: Surface no-change
+        if: steps.refresh.outputs.status == 'no-change'
+        shell: bash
+        run: |
+          # A semantically unchanged refresh produced no newly-dated distribution
+          # snapshot; the accepted baseline is retained as-is (freshness preserved).
+          echo "Snapshot refresh produced NO change; the accepted baseline is retained."
+
+      - name: Surface review-required
+        if: steps.refresh.outputs.status == 'changed' && steps.refresh.outputs.review_required == 'true'
+        shell: bash
+        run: |
+          echo "::warning title=Snapshot refresh::Candidate is valid but has a consequential reduction; a reviewer must decide before promotion."
+
+      - name: Upload verified candidate snapshot + review evidence
+        # Upload only when the refresh produced a VALID changed candidate bundle
+        # (refresh_isolated.py exports + re-verifies the bundle before exit 0 on a
+        # change, and writes no bundle on no-change/failure). The review
+        # manifest (status/diff/attempt summary) ships with the artifact.
+        if: steps.refresh.outputs.status == 'changed'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SNAPSHOT_OUTPUT_FOLDER }}
+          path: "${{ runner.temp }}/${{ env.SNAPSHOT_OUTPUT_FOLDER }}"
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload always-run refresh audit
+        # A SEPARATE always-run audit retention for EVERY outcome (no-change,
+        # changed, and failure). It lives under its own path and is NOT the
+        # verified candidate bundle, so uploads never depend on a candidate being
+        # produced; the failed-job exit status is preserved by the step above.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refresh-audit
+          path: "${{ steps.refresh.outputs.audit_dir }}"
+          if-no-files-found: error
+          retention-days: 14

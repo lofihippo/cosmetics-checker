@@ -1,0 +1,71 @@
+/* Formula editor styling layered over playground.css. */
+
+.rows { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 0.9rem; }
+
+.ingredient-row {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.85rem 1rem; background: #fbfcfd;
+}
+
+.ingredient-row header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.6rem;
+}
+.ingredient-row .row-title { font-weight: 600; font-size: 0.95rem; }
+.remove-row {
+  background: none; border: 1px solid var(--border); border-radius: 999px;
+  padding: 0.2rem 0.7rem; font-size: 0.8rem; cursor: pointer; color: var(--flag);
+}
+.remove-row:disabled { opacity: 0.5; cursor: default; }
+
+.field-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem 0.9rem;
+}
+.field-grid label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+.field-grid label > span { font-weight: 600; color: var(--text); }
+.field-grid input, .field-grid select {
+  width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border);
+  border-radius: var(--radius); font: inherit; background: var(--card);
+  color: var(--text);
+}
+.field-grid input:focus, .field-grid select:focus { outline: 3px solid var(--ring); outline-offset: 1px; }
+
+.optional-context {
+  margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed var(--border);
+  display: flex; flex-wrap: wrap; gap: 0.9rem 1.4rem; font-size: 0.85rem;
+}
+.optional-context label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); }
+
+.row-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0.9rem 0; }
+.secondary-btn {
+  background: var(--card); color: var(--accent); border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 0.7rem 1.4rem; font: inherit; font-weight: 600; cursor: pointer;
+}
+.secondary-btn:hover { background: #eaf2f8; }
+.secondary-btn:disabled, .primary-btn:disabled { opacity: 0.55; cursor: wait; }
+
+.hint { font-size: 0.82rem; color: var(--muted); }
+
+/* Result cards per ingredient. */
+.eval-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; }
+.eval-card.exceeds { border-left: 4px solid var(--flag); }
+.eval-card.within { border-left: 4px solid var(--ok); }
+.eval-card.unresolved { border-left: 4px solid var(--unknown); }
+.eval-card.unknown { border-left: 4px solid var(--muted); }
+.eval-card header { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: baseline; }
+.eval-name { font-weight: 600; word-break: break-word; }
+
+.eval-block { margin-top: 0.6rem; }
+.eval-block dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 0.9rem; margin: 0; font-size: 0.88rem; }
+.eval-block dt { color: var(--muted); font-size: 0.82rem; }
+.eval-block dd { margin: 0; word-break: break-word; }
+
+.unresolved-list { margin: 0.6rem 0 0; padding-left: 1.1rem; }
+.unresolved-list li { margin-bottom: 0.35rem; font-size: 0.87rem; }
+.unresolved-heading { font-weight: 600; font-size: 0.9rem; }
+
+@media (max-width: 560px) {
+  .field-grid { grid-template-columns: 1fr; }
+  .eval-block dl { grid-template-columns: 1fr; }
+}

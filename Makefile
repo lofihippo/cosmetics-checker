@@ -1,0 +1,84 @@
+# EU Compliance Developer Tools -- Phase 1 (eu-reg-lists)
+.PHONY: refresh-data test lint build clean package-test openapi snapshot-export snapshot-verify snapshot-import frontend-test quality coverage
+
+# Python used for tooling
+PY      ?= .venv/bin/python
+PIP     ?= .venv/bin/pip
+
+# --- Data pipeline -----------------------------------------------------
+# fetch official exports -> normalize into processed artifacts
+refresh-data:
+	$(PY) data/scripts/fetch.py
+	$(PY) data/scripts/normalize.py
+
+# Offline transfer; imports only into a new directory.
+SNAPSHOT ?= .local-reference/snapshots/annex-ii.zip
+DEST ?= .local-reference/restored-annex-ii
+snapshot-export:
+	$(PY) data/scripts/snapshot.py export --root . --output "$(SNAPSHOT)"
+
+snapshot-verify:
+	$(PY) data/scripts/snapshot.py verify "$(SNAPSHOT)"
+
+snapshot-import:
+	$(PY) data/scripts/snapshot.py import "$(SNAPSHOT)" --destination "$(DEST)"
+
+# --- Testing -----------------------------------------------------------
+test:
+	$(PY) -m pytest tests/ packages/eu-reg-lists/tests/ packages/eu-ingredient-linter/tests/ packages/eu-reg-api/tests/ packages/scan-to-check/tests/ -q
+
+package-test:
+	$(PY) -m pytest packages/eu-reg-lists/tests/ packages/eu-ingredient-linter/tests/ packages/eu-reg-api/tests/ packages/scan-to-check/tests/ -q
+
+# Run only the browser (Playwright) regression tests for the label playground, the
+# formula editor, and the product scanner. These build real Uvicorn apps over an
+# in-memory registry and drive system Chrome; they do not touch the workspace
+# snapshot.
+frontend-test:
+	$(PY) -m pytest packages/eu-reg-api/tests/test_playground_frontend.py packages/eu-reg-api/tests/test_formula_editor_frontend.py packages/scan-to-check/tests/test_scan_frontend.py packages/scan-to-check/tests/test_pwa_shell.py -q
+
+# --- OpenAPI -----------------------------------------------------------
+# Regenerates packages/eu-reg-api/openapi.yaml from the live app schema.
+openapi:
+	$(PY) -c "import eu_reg_lists as erl, eu_reg_api.main as m, yaml; \
+reg=erl.load('data/processed/eu_reg_lists.sqlite'); \
+app=m.create_app(reg, reg.metadata); \
+f=open('packages/eu-reg-api/openapi.yaml','w'); \
+yaml.safe_dump(app.openapi(), f, sort_keys=False, allow_unicode=True); \
+print('wrote openapi.yaml')"
+
+# --- Quality -----------------------------------------------------------
+# ruff is a required dev tool for the quality gate. The gate MUST NOT turn a
+# failed check into a passing "not installed" echo: it distinguishes a missing
+# tool (hard error, tells the developer to install it) from actual findings
+# (exit non-zero, diagnostics preserved) and returns failure on either.
+QUALITY_LINT_PATHS = packages/eu-reg-lists/eu_reg_lists packages/eu-ingredient-linter/eu_ingredient_linter packages/eu-reg-api/eu_reg_api packages/scan-to-check/scan_to_check eu_lint.py app.py data/scripts examples/acceptance_demo.py tools/quality_gate.py
+
+lint:
+	@test -n "$$(command -v $(PY))" || { echo "error: $(PY) not found"; exit 2; }
+	@$(PY) -c "import ruff" 2>/dev/null || { echo "error: ruff is not installed (pip install ruff)"; exit 2; }
+	$(PY) -m ruff check --select E4,E7,E9,F $(QUALITY_LINT_PATHS)
+
+# Reproducible local coverage gate for the parser/normalizer/checker core.
+# Produces machine-readable per-file + aggregate evidence in a temp dir and
+# never exits 0 on an under-target result.
+coverage:
+	$(PY) tools/quality_gate.py coverage
+
+# One documented command that orchestrates ALL required quality stages:
+# full test suite, named-core coverage, scoped lint and mypy type checks.
+# Each stage reports its status; any required failure makes the command fail.
+# Missing tools are hard errors, never successful skips.
+quality:
+	$(PY) tools/quality_gate.py check
+
+# --- Build -------------------------------------------------------------
+build:
+	$(PY) -m pip install --quiet -e packages/eu-reg-lists
+	$(PY) -m pip install --quiet -e packages/eu-ingredient-linter
+	$(PY) -m pip install --quiet -e packages/eu-reg-api
+	$(PY) -m pip install --quiet -e packages/scan-to-check
+
+clean:
+	rm -rf data/processed/*.jsonl data/processed/*.sqlite data/processed/metadata.json
+	rm -rf packages/eu-reg-lists/**/__pycache__ packages/eu-ingredient-linter/**/__pycache__ packages/eu-reg-api/**/__pycache__ tests/__pycache__ data/scripts/__pycache__ .pytest_cache

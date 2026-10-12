@@ -1,0 +1,43 @@
+{
+  "name": "scan-to-check — local cosmetic scanner",
+  "short_name": "scan-to-check",
+  "description": "Scan a cosmetic product barcode or label, review the ingredients, and check them against the EU CosIng regulatory snapshot. Regulatory information, not legal advice.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#2f5fd0",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New barcode lookup",
+      "short_name": "Look up",
+      "url": "/"
+    },
+    {
+      "name": "Manual ingredients",
+      "short_name": "Manual",
+      "url": "/#manual"
+    }
+  ]
+}

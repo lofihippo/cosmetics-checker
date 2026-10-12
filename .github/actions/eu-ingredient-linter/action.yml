@@ -1,0 +1,92 @@
+name: "EU Ingredient Linter"
+description: >
+  Check a cosmetic ingredient file (CSV/TSV/JSON) against a verified EU-regulatory
+  snapshot, emit GitHub annotations, and preserve a cited JSON report.
+  Regulatory information, not legal advice.
+
+author: "Sensei (cosmetics-checker)"
+
+inputs:
+  input-file:
+    description: >
+      Path to the ingredient file to check. One file = one formula (a required
+      `ingredient` column; optional percent/unit/basis/product_type/body_area/
+      professional_use/ready_for_use). Paths with spaces are supported.
+      Relative paths resolve against `github.workspace`.
+    required: true
+  input-format:
+    description: "Input file format: csv | tsv | json."
+    required: false
+    default: "csv"
+  snapshot-path:
+    description: >
+      Path to a verified EU-regulatory snapshot. Either an imported snapshot
+      directory (containing data/processed/eu_reg_lists.sqlite + metadata.json
+      and companion raw/metadata/JSONL files) or a snapshot bundle .zip produced
+      by `data/scripts/snapshot.py export`. The Action fully verifies the
+      snapshot before checking; it never falls back to a curated seed or an
+      empty registry, and never fetches official exports.
+    required: true
+  report-output:
+    description: >
+      Optional path to write the cited JSON report (preserved for a subsequent
+      artifact-upload step). Relative paths resolve against `github.workspace`.
+      Defaults to `eu-ingredient-report.json` in the workspace root.
+    required: false
+    default: "eu-ingredient-report.json"
+  fail-on:
+    description: >
+      When to fail the step: `findings` (default) fails on any finding or invalid
+      input; `invalid-input` fails only on invalid input. Kept separate from
+      regulatory classification; the CLI's own exit code is always respected for
+      invalid input. Operational failures (snapshot verification, missing/invalid
+      report, report write, unexpected CLI exit) always fail under either policy.
+    required: false
+    default: "findings"
+
+outputs:
+  report-valid:
+    description: >
+      "1" if this invocation produced and validated a fresh current JSON report;
+      "0" otherwise. Gate artifact upload on this; never upload a stale report.
+    value: ${{ steps.check.outputs.report-valid }}
+  report-path:
+    description: >
+      Absolute path to the validated current JSON report, only meaningful when
+      report-valid is "1".
+    value: ${{ steps.check.outputs.report-path }}
+
+runs:
+  using: "composite"
+  steps:
+    # This composite wrapper passes every input through a step `env`, so each
+    # value is a shell-variable value (data), not text interpolated into shell
+    # source. GitHub expands `${{ inputs.* }}` only inside `env:`; the `run`
+    # script then references the quoted variables. This prevents a filename or
+    # value containing `$()`, backticks, or other shell syntax from executing
+    # while the composite runs. The script builds the container from the action
+    # repository root (the correct build context for the Dockerfile's COPY
+    # instructions) and runs it with the workspace bind-mounted at the same
+    # absolute path, then surfaces `report-valid`/`report-path`.
+    - name: Check ingredients (Docker wrapper)
+      id: check
+      shell: bash
+      env:
+        INPUT_FILE: ${{ inputs.input-file }}
+        INPUT_FORMAT: ${{ inputs.input-format }}
+        SNAPSHOT_PATH: ${{ inputs.snapshot-path }}
+        REPORT_OUTPUT: ${{ inputs.report-output }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        "${{ github.action_path }}/docker-wrapper.sh" \
+          "${{ github.action_path }}" \
+          "${{ github.workspace }}" \
+          "$INPUT_FILE" \
+          "$INPUT_FORMAT" \
+          "$SNAPSHOT_PATH" \
+          "$REPORT_OUTPUT" \
+          "$FAIL_ON"
+
+branding:
+  icon: "shield"
+  color: "purple"

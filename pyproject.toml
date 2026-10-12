@@ -1,0 +1,34 @@
+[project]
+name = "eu-compliance-tools"
+version = "0.1.0"
+description = "EU Compliance Developer Tools -- data, API, CLI, scanner"
+requires-python = ">=3.9"
+
+[tool.workspace]
+members = ["packages/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "packages/eu-reg-lists/tests", "packages/scan-to-check/tests"]
+
+[tool.mypy]
+python_version = "3.10"
+# Source packages are importable from the repo tree (tests add them via
+# conftest sys.path); this makes mypy resolve the editable source, not a
+# developer-installed copy.
+mypy_path = "packages/eu-reg-lists,packages/eu-ingredient-linter,packages/eu-reg-api,packages/scan-to-check"
+files = [
+    "eu_lint.py",
+    "app.py",
+    "data/scripts",
+    "packages/eu-reg-lists/eu_reg_lists",
+    "packages/eu-ingredient-linter/eu_ingredient_linter",
+    "packages/eu-reg-api/eu_reg_api",
+    "packages/scan-to-check/scan_to_check",
+    "tools/quality_gate.py",
+    "examples/acceptance_demo.py",
+]
+# The legacy prototype/data scripts carry long-standing typing debt that is
+# intentionally outside this bounded cleanup. Do NOT silence via broad ignores;
+# report it precisely and keep a visible inventory.
+warn_unused_ignores = false
+no_implicit_optional = false

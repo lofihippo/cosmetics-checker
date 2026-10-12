@@ -1,0 +1,6 @@
+ingredient,percent,unit,basis,product_type,body_area,professional_use,ready_for_use
+Sodium nitrite,0.1,%,ready_for_use,rust_inhibitor,,,
+Toluene,25,%,ready_for_use,nail_product,,,
+Hydroquinone,0.01,%,after_mixing,artificial_nail_system,,,
+Sodium benzoate,0.5,%,ready_for_use,,,,true
+Salicylic acid,,%,ready_for_use,,,,

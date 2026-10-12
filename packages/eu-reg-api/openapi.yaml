@@ -1,0 +1,1021 @@
+openapi: 3.1.0
+info:
+  title: EU Regulatory Substance API
+  description: Read-only, local API over the Annex-II EU regulatory snapshot. Regulatory
+    information, not legal advice. A result is never a compliance determination.
+  version: 0.1.0
+paths:
+  /:
+    get:
+      summary: Browser playground
+      operationId: playground__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /formula:
+    get:
+      summary: Browser formula editor
+      operationId: formula_editor_formula_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            text/html:
+              schema:
+                type: string
+  /health:
+    get:
+      summary: Service readiness and loaded snapshot identity
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/substances:
+    get:
+      summary: Search substances by name/alias/exact identifier
+      operationId: search_v1_substances_get
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          description: Name, alias, CAS, EC, E-number, or CI.
+          title: Q
+        description: Name, alias, CAS, EC, E-number, or CI.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Maximum results
+          default: 25
+          title: Limit
+        description: Maximum results
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '422':
+          description: Invalid request or unavailable coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/substances/{cas}:
+    get:
+      summary: Resolve a substance by CAS identifier
+      operationId: substance_v1_substances__cas__get
+      parameters:
+      - name: cas
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Cas
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstanceResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Invalid request or unavailable coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/lists/{list_name}:
+    get:
+      summary: List substances in a known EU source list (bounded)
+      operationId: lists_v1_lists__list_name__get
+      parameters:
+      - name: list_name
+        in: path
+        required: true
+        schema:
+          type: string
+          title: List Name
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 100
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        '422':
+          description: Invalid request or unavailable coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/check:
+    get:
+      summary: Check a list of ingredients against the snapshot
+      operationId: check_v1_check_get
+      parameters:
+      - name: ingredients
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: Comma/semicolon-separated ingredients (max 10000 chars).
+          title: Ingredients
+        description: Comma/semicolon-separated ingredients (max 10000 chars).
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+        '422':
+          description: Invalid request or unavailable coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/check-formula:
+    post:
+      summary: Check a structured formula against the snapshot
+      description: 'Evaluate a structured formula (ingredient + optional concentration
+        +
+
+        explicit unit/basis/product context) against the bounded Annex III
+
+        evaluator via the shared library.
+
+
+        The raw JSON body is read incrementally (bounded) and parsed with
+
+        ``parse_float=Decimal`` so decimal input precision is preserved exactly
+
+        (no binary-float round-trip); validation is delegated to
+
+        ``eu_ingredient_linter.evaluate_formula`` (never a second evaluator).
+
+        The snapshot is read-only.'
+      operationId: check_formula_v1_check_formula_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                ingredients:
+                  items:
+                    properties:
+                      ingredient:
+                        type: string
+                        minLength: 1
+                        title: Ingredient
+                        description: Ingredient name or exact identifier.
+                      percent:
+                        anyOf:
+                        - type: number
+                        - type: string
+                        - type: 'null'
+                        title: Percent
+                        description: Concentration, as a JSON number or decimal string.
+                          Absent/null = not supplied (unevaluated).
+                      unit:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        title: Unit
+                        description: Explicit concentration unit (e.g. '%'). Required
+                          for a numeric comparison; an unsupported unit is never converted
+                          or assumed.
+                      basis:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        title: Basis
+                        description: Concentration basis (e.g. 'ready_for_use'). Required
+                          for a numeric comparison; a missing basis is not assumed
+                          ready-for-use.
+                      product_type:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        title: Product Type
+                        description: Product-type context (exact canonical or documented
+                          alias). Required for a product-scoped rule.
+                      body_area:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        title: Body Area
+                        description: Optional body-area context.
+                      professional_use:
+                        anyOf:
+                        - type: boolean
+                        - type: 'null'
+                        title: Professional Use
+                        description: 'Optional boolean: professional use. A rule that
+                          requires it stays an unresolved requirement.'
+                      ready_for_use:
+                        anyOf:
+                        - type: boolean
+                        - type: 'null'
+                        title: Ready For Use
+                        description: 'Optional boolean: ready-for-use. A False value
+                          is contradictory for a ready-for-use rule and leaves the
+                          numeric comparison unresolved.'
+                    type: object
+                    required:
+                    - ingredient
+                    title: FormulaIngredientModel
+                    description: 'A single ingredient in a structured formula.
+
+
+                      ``percent`` is a JSON number or a decimal string (e.g. ``25.0000000000000001``).
+
+                      The endpoint parses the raw JSON body with ``parse_float=Decimal``
+                      so a JSON
+
+                      number keeps exact decimal precision (no binary-float round-trip)
+                      and
+
+                      compares identically to its exact string equivalent. ``None``
+                      (or absent)
+
+                      means the concentration is not supplied — it is left unevaluated,
+                      never
+
+                      silently assumed ready-for-use.'
+                  type: array
+                  maxItems: 200
+                  minItems: 1
+                  title: Ingredients
+                  description: Structured-formula ingredients (1-200).
+              type: object
+              required:
+              - ingredients
+              title: FormulaRequest
+              description: Request contract for ``POST /v1/check-formula``. ``ingredients``
+                is required and non-empty, with a maximum of 200 entries. The route
+                parses the raw JSON body with ``parse_float=Decimal`` to preserve
+                decimal precision; validation is delegated to the shared library ``eu_ingredient_linter.evaluate_formula``
+                (never a second evaluator).
+            examples:
+              supported-comparison:
+                summary: Supported comparison with unresolved warnings
+                value:
+                  ingredients:
+                  - ingredient: Toluene
+                    percent: 20
+                    unit: '%'
+                    basis: ready_for_use
+                    product_type: nail_product
+              missing-context:
+                summary: Missing context (unevaluated)
+                value:
+                  ingredients:
+                  - ingredient: Toluene
+                    percent: 20
+                    unit: '%'
+              benzene-annex2:
+                summary: Benzene intact Annex II evidence
+                value:
+                  ingredients:
+                  - ingredient: Benzene
+                    percent: 1
+                    unit: '%'
+              hydroquinone-manual-review:
+                summary: Hydroquinone cross-annex manual review
+                value:
+                  ingredients:
+                  - ingredient: Hydroquinone
+                    percent: 0.01
+                    unit: '%'
+                    basis: after_mixing
+                    product_type: artificial_nail_system
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormulaCheckResponse'
+        '422':
+          description: Invalid request or unavailable coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    CheckResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/CheckResultModel'
+          type: array
+          title: Results
+        tokens:
+          items:
+            type: string
+          type: array
+          title: Tokens
+        n_ingredients:
+          type: integer
+          title: N Ingredients
+        n_flagged:
+          type: integer
+          title: N Flagged
+        n_banned:
+          type: integer
+          title: N Banned
+        n_not_in_dataset:
+          type: integer
+          title: N Not In Dataset
+        n_unverified_identity:
+          type: integer
+          title: N Unverified Identity
+        n_unverified:
+          type: integer
+          title: N Unverified
+        clean:
+          type: boolean
+          title: Clean
+        verdict:
+          type: string
+          title: Verdict
+        no_ingredients:
+          type: boolean
+          title: No Ingredients
+        data_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Data Updated At
+        registry_size:
+          type: integer
+          title: Registry Size
+        coverage:
+          $ref: '#/components/schemas/CoverageModel'
+        disclaimer:
+          type: string
+          title: Disclaimer
+          default: Regulatory information, not legal advice.
+        metadata:
+          $ref: '#/components/schemas/MetadataEnvelope'
+      type: object
+      required:
+      - results
+      - tokens
+      - n_ingredients
+      - n_flagged
+      - n_banned
+      - n_not_in_dataset
+      - n_unverified_identity
+      - n_unverified
+      - clean
+      - verdict
+      - no_ingredients
+      - data_updated_at
+      - registry_size
+      - coverage
+      - metadata
+      title: CheckResponse
+      description: A full ingredient check, delegating to ``ingredient_report``.
+    CheckResultModel:
+      properties:
+        ingredient:
+          type: string
+          title: Ingredient
+        is_in_dataset:
+          type: boolean
+          title: Is In Dataset
+        determination:
+          type: string
+          title: Determination
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        annex:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Annex
+        regulation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Regulation
+        source_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Url
+        data_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Data Updated At
+        conditions:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Conditions
+        rules:
+          items:
+            $ref: '#/components/schemas/RuleModel'
+          type: array
+          title: Rules
+        cas:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cas
+        ec:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ec
+        e_number:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: E Number
+        ci:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ci
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        cased_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cased Name
+        evaluation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Evaluation
+        evaluation_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Evaluation Reason
+        membership:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Membership
+        linked_rules:
+          items:
+            $ref: '#/components/schemas/RuleModel'
+          type: array
+          title: Linked Rules
+      type: object
+      required:
+      - ingredient
+      - is_in_dataset
+      - determination
+      title: CheckResultModel
+      description: Per-ingredient result (mirrors linter's ``CheckResult.as_dict``).
+    CoverageModel:
+      properties:
+        available:
+          items:
+            type: string
+          type: array
+          title: Available
+        missing:
+          items:
+            type: string
+          type: array
+          title: Missing
+        has_annex_ii:
+          type: boolean
+          title: Has Annex Ii
+        note:
+          type: string
+          title: Note
+      type: object
+      required:
+      - has_annex_ii
+      - note
+      title: CoverageModel
+    ErrorDetail:
+      properties:
+        code:
+          type: string
+          title: Code
+        message:
+          type: string
+          title: Message
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detail
+      type: object
+      required:
+      - code
+      - message
+      title: ErrorDetail
+    ErrorResponse:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+        disclaimer:
+          type: string
+          title: Disclaimer
+          default: Regulatory information, not legal advice.
+        metadata:
+          anyOf:
+          - $ref: '#/components/schemas/MetadataEnvelope'
+          - type: 'null'
+      type: object
+      required:
+      - error
+      title: ErrorResponse
+    FormulaCheckResponse:
+      properties:
+        evaluations:
+          items:
+            $ref: '#/components/schemas/FormulaEvaluationModel'
+          type: array
+          title: Evaluations
+        data_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Data Updated At
+        registry_size:
+          type: integer
+          title: Registry Size
+        coverage:
+          $ref: '#/components/schemas/CoverageModel'
+        disclaimer:
+          type: string
+          title: Disclaimer
+          default: Regulatory information, not legal advice.
+        metadata:
+          $ref: '#/components/schemas/MetadataEnvelope'
+      type: object
+      required:
+      - evaluations
+      - registry_size
+      - coverage
+      - metadata
+      title: FormulaCheckResponse
+      description: Full structured-formula check, delegating to ``evaluate_formula``.
+    FormulaEvaluationModel:
+      properties:
+        ingredient:
+          type: string
+          title: Ingredient
+        resolved_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolved Name
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        is_in_dataset:
+          type: boolean
+          title: Is In Dataset
+        determination:
+          type: string
+          title: Determination
+        rule_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rule Status
+        annex:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Annex
+        applicable_context:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Applicable Context
+        numeric_comparison:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Numeric Comparison
+        submitted_value:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Submitted Value
+        unit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unit
+        basis:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Basis
+        cap:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cap
+        unresolved_requirements:
+          items:
+            type: string
+          type: array
+          title: Unresolved Requirements
+        reasons:
+          items:
+            type: string
+          type: array
+          title: Reasons
+        verdict:
+          type: string
+          title: Verdict
+        rules:
+          items:
+            $ref: '#/components/schemas/RuleModel'
+          type: array
+          title: Rules
+        membership:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Membership
+        linked_rules:
+          items:
+            $ref: '#/components/schemas/RuleModel'
+          type: array
+          title: Linked Rules
+        source_rule:
+          additionalProperties: true
+          type: object
+          title: Source Rule
+        provenance:
+          additionalProperties: true
+          type: object
+          title: Provenance
+        prohibition_finding:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Prohibition Finding
+        submitted_context:
+          additionalProperties: true
+          type: object
+          title: Submitted Context
+      type: object
+      required:
+      - ingredient
+      - is_in_dataset
+      - determination
+      - verdict
+      title: FormulaEvaluationModel
+      description: Per-ingredient formula evaluation (separate rule/context/numeric
+        fields).
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        snapshot:
+          type: string
+          title: Snapshot
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        content_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Hash
+        data_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Data Updated At
+        coverage:
+          $ref: '#/components/schemas/CoverageModel'
+        count_substances:
+          type: integer
+          title: Count Substances
+        count_verified_rules:
+          type: integer
+          title: Count Verified Rules
+        disclaimer:
+          type: string
+          title: Disclaimer
+          default: Regulatory information, not legal advice.
+        note:
+          type: string
+          title: Note
+          default: Service health is not an ingredient compliance determination.
+      type: object
+      required:
+      - status
+      - snapshot
+      - version
+      - content_hash
+      - data_updated_at
+      - coverage
+      - count_substances
+      - count_verified_rules
+      title: HealthResponse
+    ListEntry:
+      properties:
+        row:
+          type: integer
+          title: Row
+        substance:
+          $ref: '#/components/schemas/SubstanceModel'
+      type: object
+      required:
+      - row
+      - substance
+      title: ListEntry
+    ListResponse:
+      properties:
+        list_name:
+          type: string
+          title: List Name
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+        entries:
+          items:
+            $ref: '#/components/schemas/ListEntry'
+          type: array
+          title: Entries
+        metadata:
+          $ref: '#/components/schemas/MetadataEnvelope'
+      type: object
+      required:
+      - list_name
+      - total
+      - limit
+      - offset
+      - entries
+      - metadata
+      title: ListResponse
+    MetadataEnvelope:
+      properties:
+        data_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Data Updated At
+        coverage:
+          anyOf:
+          - $ref: '#/components/schemas/CoverageModel'
+          - type: 'null'
+        disclaimer:
+          type: string
+          title: Disclaimer
+          default: Regulatory information, not legal advice.
+        request_hint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Request Hint
+      type: object
+      required:
+      - data_updated_at
+      title: MetadataEnvelope
+    RuleModel:
+      properties:
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        annex:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Annex
+        regulation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Regulation
+        source_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Url
+        source_updated_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Updated At
+        conditions:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Conditions
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        effective_date:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Effective Date
+        raw:
+          additionalProperties: true
+          type: object
+          title: Raw
+      type: object
+      required:
+      - status
+      - annex
+      - regulation
+      - source_url
+      title: RuleModel
+    SearchResult:
+      properties:
+        query:
+          type: string
+          title: Query
+        count:
+          type: integer
+          title: Count
+        limit:
+          type: integer
+          title: Limit
+        results:
+          items:
+            $ref: '#/components/schemas/SubstanceModel'
+          type: array
+          title: Results
+        metadata:
+          $ref: '#/components/schemas/MetadataEnvelope'
+      type: object
+      required:
+      - query
+      - count
+      - limit
+      - results
+      - metadata
+      title: SearchResult
+      description: Bounded search over the registry (names, aliases, exact identifiers).
+    SubstanceModel:
+      properties:
+        id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        aliases:
+          items:
+            type: string
+          type: array
+          title: Aliases
+        cas:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cas
+        ec:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ec
+        e_number:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: E Number
+        ci:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ci
+        determination:
+          type: string
+          title: Determination
+        rules:
+          items:
+            $ref: '#/components/schemas/RuleModel'
+          type: array
+          title: Rules
+        sources:
+          items:
+            type: string
+          type: array
+          title: Sources
+        member_of:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Member Of
+      type: object
+      required:
+      - id
+      - name
+      - cas
+      - ec
+      - e_number
+      - ci
+      - determination
+      title: SubstanceModel
+    SubstanceResponse:
+      properties:
+        substance:
+          $ref: '#/components/schemas/SubstanceModel'
+        is_in_dataset:
+          type: boolean
+          title: Is In Dataset
+          default: true
+        metadata:
+          $ref: '#/components/schemas/MetadataEnvelope'
+      type: object
+      required:
+      - substance
+      - metadata
+      title: SubstanceResponse
+      description: 'Typed envelope for a CAS lookup.
+
+
+        Carries the substance (with its rules/provenance), an explicit
+
+        ``is_in_dataset`` membership flag, and the shared snapshot metadata
+
+        (``data_updated_at``, ``coverage``, ``disclaimer``).'

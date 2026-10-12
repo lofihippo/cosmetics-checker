@@ -1,0 +1,17 @@
+# Development dependencies (Phase 0).
+# Phase 0 core uses only the Python stdlib; pytest is required for tests.
+pytest>=8.0
+
+# Optional demo front-end (paste-label demo).
+streamlit>=1.30
+
+# Local quality gate (tools/quality_gate.py + Makefile lint/coverage targets).
+# ruff is required, NOT optional: `make lint` hard-fails with an install hint if
+# it is missing (it must never mask a failed check as "not installed").
+ruff>=0.6
+
+# Coverage measurement for the parser/normalizer/checker core coverage gate.
+coverage>=7.0
+
+# Type checking for the maintained source (part of `make quality`).
+mypy>=1.8

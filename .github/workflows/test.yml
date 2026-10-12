@@ -1,0 +1,94 @@
+name: Test / quality
+
+# Matrix test + quality orchestration for Python 3.11 and 3.12.
+#
+# Regulatory information, not legal advice.
+#
+# Runs the SAME commands as the local `make quality` orchestration
+# (tools/quality_gate.py check): full pytest suite, named-core coverage, scoped
+# ruff lint and mypy type checks. A failed stage keeps the job red; missing tool
+# installation is a hard failure, never a successful skip.
+#
+# Details:
+#   * Data/dependencies are installed from the repo (editable source packages +
+#     requirements-dev.txt). No live official/provider requests are made: the OCR
+#     vendor assets are pinned in-repo and the scanner provider adapter is never
+#     called by the quality stages (the frontend/browser tests stub the provider
+#     with deterministic fixtures / in-memory registries). The regulatory
+#     snapshot fixture is built in-memory by the test harness.
+#   * Browser/Docker prerequisites are installed explicitly and are NOT cached
+#     into the repo. The Playwright (Chromium via system Chrome) and Docker
+#     integration tests use deterministic in-process fixtures; they do not call
+#     the network.
+#   * No dependence on gitignored `.local-reference` artifacts or a developer's
+#     editable install: every generated input/report is written to a run-owned
+#     temp dir.
+#
+# This workflow does NOT publish, dispatch, deploy or fetch official exports.
+# Minimal read-only permissions; no secrets.
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: quality (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          # Editable-install the source packages so the CLI entry points resolve.
+          python -m pip install --quiet -e packages/eu-reg-lists
+          python -m pip install --quiet -e packages/eu-ingredient-linter
+          python -m pip install --quiet -e packages/eu-reg-api
+          python -m pip install --quiet -e packages/scan-to-check
+
+      # The API/playground and PWA/scan browser tests drive a real browser via
+      # playwright.chromium.launch(channel="chrome"). Install a real Chrome
+      # explicitly (Playwright's own "chromium" build is NOT channel="chrome"),
+      # plus the shared-library prerequisites, so the matrix does not depend on
+      # a preinstalled on-host browser.
+      - name: Install browser (Chrome) prerequisites
+        run: |
+          python -m playwright install --with-deps chrome
+
+      # The reusable Action integration tests exercise a real container build
+      # when a Docker daemon is present. The ubuntu-latest runner ships Docker,
+      # and the tests run `--network=none` so no regulatory network fetch can
+      # occur; they fall back to the direct entrypoint path when Docker is
+      # unavailable. This sets up the runner explicitly rather than assuming it.
+      - name: Ensure Docker CLI/daemon prerequisites
+        run: |
+          docker --version
+          docker info >/dev/null 2>&1 || echo "warning: Docker daemon unavailable; integration tests fall back to direct entrypoint"
+
+      - run: make quality
+
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-evidence-py${{ matrix.python-version }}
+          path: "${{ runner.temp }}/quality-check-*/"
+          if-no-files-found: ignore
+          retention-days: 7

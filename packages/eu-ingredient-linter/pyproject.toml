@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eu-ingredient-linter"
+version = "0.1.0"
+description = "Check ingredients against an Annex-II EU regulatory registry (Phase 2)"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["eu-reg-lists"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+eu-ingredient-linter = "eu_ingredient_linter.__main__:main"
+
+[tool.setuptools]
+packages = ["eu_ingredient_linter"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+eu_ingredient_linter = ["py.typed"]

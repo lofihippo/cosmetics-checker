@@ -1,0 +1,9 @@
+{
+  "ingredients": [
+    {"ingredient": "Sodium nitrite", "percent": 0.1, "unit": "%", "basis": "ready_for_use", "product_type": "rust_inhibitor"},
+    {"ingredient": "Toluene", "percent": 25, "unit": "%", "basis": "ready_for_use", "product_type": "nail_product"},
+    {"ingredient": "Hydroquinone", "percent": 0.01, "unit": "%", "basis": "after_mixing", "product_type": "artificial_nail_system"},
+    {"ingredient": "Thioglycolic acid and its salts", "percent": 3, "unit": "%", "basis": "ready_for_use", "product_type": "hair_product"},
+    {"ingredient": "TotallyFakeIngredient", "percent": 1}
+  ]
+}

@@ -1,0 +1,176 @@
+# EU Ingredient Linter — PR-check example workflow
+#
+# Regulatory information, not legal advice.
+#
+# A normal, unprivileged `pull_request` (and `workflow_dispatch`) integration that
+# checks a supplied ingredient file against a TRUSTED, VERIFIED EU-regulatory
+# snapshot and uploads the cited JSON report even when findings cause the job to
+# fail. It never fetches official exports, never falls back to a curated/empty
+# registry, and never publishes `.local-reference` files.
+#
+# Trust boundary: the snapshot source and expected digest are trusted
+# maintainer configuration (repository variables, set by a maintainer). The
+# ingredient file is PR content under review. The Action runs offline and the
+# job uses a NORMAL (non-privileged) checkout `permissions: contents: read`,
+# no `pull_request_target`, and no secrets. This is NOT a claim that checked-out
+# PR code never executes — keep any write/trusted token out of this context.
+
+on:
+  pull_request:
+    paths:
+      # Trigger for the intended ingredient files only (adjust to your layout).
+      - "**/*.csv"
+      - "**/*.tsv"
+      - "**/*.json"
+      - ".github/actions/eu-ingredient-linter/**"
+      - ".github/workflows/eu-ingredient-linter.yml"
+  workflow_dispatch:
+    inputs:
+      ingredient-file:
+        description: "Path to the ingredient file to check (CSV/TSV/JSON)."
+        required: true
+        default: "examples/formulas/structured-formula.csv"
+      input-format:
+        description: "csv | tsv | json"
+        required: true
+        default: "csv"
+
+permissions:
+  contents: read
+  # Minimal. upload-artifact uses the default runner token; no extra permission.
+
+env:
+  # Trusted maintainer configuration. Set these as repository variables:
+  #   SNAPSHOT_URL     — URL to a verified snapshot bundle (.zip) the maintainer
+  #                      publishes/attaches.
+  #   SNAPSHOT_SHA256  — expected SHA-256 of that exact bundle (independently
+  #                      supplied, trusted configuration). Required.
+  #   INGREDIENT_FILE  — path (relative to the workspace) of the ingredient file
+  #                      under review (default used when not set).
+  #   INPUT_FORMAT     — csv | tsv | json (default csv).
+  #   FAIL_ON          — findings (default) | invalid-input.
+  SNAPSHOT_URL: ${{ vars.SNAPSHOT_URL }}
+  SNAPSHOT_SHA256: ${{ vars.SNAPSHOT_SHA256 }}
+  INGREDIENT_FILE: ${{ vars.INGREDIENT_FILE }}
+  INPUT_FORMAT: ${{ vars.INPUT_FORMAT }}
+  FAIL_ON: ${{ vars.FAIL_ON }}
+  # Manual (workflow_dispatch) inputs, also passed via env (never into shell source).
+  DISPATCH_INGREDIENT_FILE: ${{ inputs.ingredient-file }}
+  DISPATCH_INPUT_FORMAT: ${{ inputs.input-format }}
+
+jobs:
+  eu-ingredient-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # A normal (non-privileged) checkout of the PR revision.
+        with:
+          fetch-depth: 1
+
+      # --- Trusted snapshot acquisition (fresh runner, no bundled data) ------
+      # Download the snapshot bundle from the maintainer-configured source into a
+      # fresh workspace dir, verify the trusted expected SHA-256, then pass the
+      # bundle to the Action which runs the full bundle verifier/importer (so a
+      # manifest accompanying an untrusted archive is never the only check).
+      - name: Acquire and verify trusted snapshot
+        id: snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Any acquisition/verification failure is an operational failure.
+          trap 'echo "::error title=EU Ingredient Linter::Snapshot acquisition failed; refusing to check against unverified data."; exit 2' ERR
+          URL="${SNAPSHOT_URL:-}"
+          EXPECTED="${SNAPSHOT_SHA256:-}"
+          if [[ -z "${URL}" ]]; then
+            echo "::error title=EU Ingredient Linter::SNAPSHOT_URL is not set; configure a trusted snapshot bundle source."
+            exit 2
+          fi
+          if [[ -z "${EXPECTED}" ]]; then
+            echo "::error title=EU Ingredient Linter::SNAPSHOT_SHA256 is not set; supply the trusted expected bundle digest."
+            exit 2
+          fi
+          RUN_DIR="${GITHUB_WORKSPACE}/.eu-lint-run/snapshot-acquire"
+          mkdir -p "${RUN_DIR}"
+          BUNDLE="${RUN_DIR}/snapshot-bundle.zip"
+          curl -fsSL --retry 3 -o "${BUNDLE}" "${URL}"
+          ACTUAL="$(sha256sum "${BUNDLE}" | awk '{print $1}')"
+          if [[ "${ACTUAL}" != "${EXPECTED}" ]]; then
+            echo "::error title=EU Ingredient Linter::Snapshot digest mismatch (expected ${EXPECTED}, got ${ACTUAL}); refusing unverified data."
+            exit 2
+          fi
+          # The bundle is inside the consumer workspace, whose absolute path the
+          # Action bind-mounts into the container, so the container can see it.
+          echo "snapshot-path=${BUNDLE}" >> "${GITHUB_OUTPUT}"
+          echo "trusted snapshot acquired and digest-verified: ${URL}"
+
+      # --- Resolve the ingredient file under review --------------------------
+      - name: Resolve input file
+        id: input
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            INPUT="${DISPATCH_INGREDIENT_FILE}"
+            FORMAT="${DISPATCH_INPUT_FORMAT}"
+          else
+            INPUT="${INGREDIENT_FILE:-examples/formulas/structured-formula.csv}"
+            FORMAT="${INPUT_FORMAT:-csv}"
+          fi
+          # A path containing CR/LF cannot be transported through the
+          # line-oriented GITHUB_OUTPUT stream without injecting a second output
+          # key. Reject it up front with an escaped diagnostic; spaces and
+          # ordinary shell-looking text are preserved as literal data.
+          if [[ "${INPUT}" == *$'\r'* || "${INPUT}" == *$'\n'* ]]; then
+            printf '::error title=EU Ingredient Linter::input-file contains a carriage return or line feed; refusing unsupported path.\n' >&2
+            exit 2
+          fi
+          if [[ ! -f "${INPUT}" ]]; then
+            echo "::error title=EU Ingredient Linter::Ingredient file not found: ${INPUT}"
+            exit 2
+          fi
+          echo "input-file=${INPUT}" >> "${GITHUB_OUTPUT}"
+          echo "input-format=${FORMAT}" >> "${GITHUB_OUTPUT}"
+
+      # --- Run the check -----------------------------------------------------
+      # NOT continue-on-error: a finding or invalid input fails this step. The
+      # report is only promoted when THIS invocation produced a valid current
+      # report (the Action surfaces report-valid/report-path), so a stale or
+      # absent report cannot be uploaded as current.
+      - name: Check ingredients (annotations + cited JSON report)
+        id: check
+        uses: ./.github/actions/eu-ingredient-linter
+        with:
+          input-file: ${{ steps.input.outputs.input-file }}
+          input-format: ${{ steps.input.outputs.input-format }}
+          snapshot-path: ${{ steps.snapshot.outputs.snapshot-path }}
+          report-output: ${{ github.workspace }}/eu-ingredient-report.json
+          fail-on: ${{ env.FAIL_ON || 'findings' }}
+
+      - name: Upload cited JSON report
+        # Upload ONLY when this run produced a valid current report (report-valid
+        # presents). A finding report still uploads while the job stays failed; a
+        # precheck/operational failure does NOT upload a stale report.
+        if: always() && steps.check.outputs.report-valid == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eu-ingredient-report
+          path: ${{ steps.check.outputs.report-path }}
+          if-no-files-found: warn
+          retention-days: 7
+
+      # Explicitly surface the outcome. This does NOT flip the job green: the
+      # check step failing keeps the job failed; `exit 1` below only preserves it.
+      - name: Report outcome
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.check.outcome }}" == "failure" ]]; then
+            if [[ "${{ steps.check.outputs.report-valid }}" == "1" ]]; then
+              echo "EU Ingredient Linter reported findings or invalid input. A valid current report was uploaded; review annotations."
+            else
+              echo "EU Ingredient Linter failed operationally (no valid current report). Review diagnostics."
+            fi
+            exit 1   # preserve the failed job conclusion
+          else
+            echo "EU Ingredient Linter completed. Exit 0 is not a compliance determination."
+          fi
