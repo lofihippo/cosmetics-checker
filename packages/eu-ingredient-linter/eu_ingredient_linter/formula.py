@@ -39,6 +39,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from eu_reg_lists import CheckResult, Registry, check_token
+from eu_reg_lists.release_policy import coverage_dict
+from eu_reg_lists.checker import annex2_prohibition_finding
 
 DISCLAIMER = "Regulatory information, not legal advice."
 
@@ -325,6 +327,7 @@ class FormulaIngredient:
     body_area: Optional[str] = None
     professional_use: Optional[bool] = None
     ready_for_use: Optional[bool] = None
+    assessment_date: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: Any) -> "FormulaIngredient":
@@ -341,9 +344,15 @@ class FormulaIngredient:
         body_area = _optional_str(d.get("body_area", d.get("body")))
         professional_use = _optional_bool(d.get("professional_use", d.get("professional")))
         ready_for_use = _optional_bool(d.get("ready_for_use"))
+        assessment_date = _optional_date(d.get("assessment_date"))
+        if assessment_date is not None:
+            # A supplied assessment date must be syntactically valid ISO and is
+            # never silently ignored (Part A: validated assessment-date contract).
+            _parse_iso_date(assessment_date)
         return cls(name_or_id=name_or_id.strip(), percent=percent, unit=unit,
                    basis=basis, product_type=product_type, body_area=body_area,
-                   professional_use=professional_use, ready_for_use=ready_for_use)
+                   professional_use=professional_use, ready_for_use=ready_for_use,
+                   assessment_date=assessment_date)
 
 
 def _optional_str(v: Any) -> Optional[str]:
@@ -352,6 +361,27 @@ def _optional_str(v: Any) -> Optional[str]:
     if not isinstance(v, str):
         raise ValueError(f"expected a string, got {type(v).__name__}")
     return v.strip() or None
+
+
+def _optional_date(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        raise ValueError(f"expected a string for assessment_date, got {type(v).__name__}")
+    return v.strip() or None
+
+
+def _parse_iso_date(value: str) -> None:
+    """Validate an ISO-8601 date string (``YYYY-MM-DD`` semantics via ``date``).
+
+    Raises ValueError for a malformed date so a bad assessment_date is rejected
+    consistently rather than ignored.
+    """
+    try:
+        from datetime import date
+        date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"assessment_date is not a valid ISO date: {value!r}")
 
 
 def _optional_bool(v: Any) -> Optional[bool]:
@@ -429,13 +459,62 @@ def _is_finite(f: float) -> bool:
 # Possible verdicts:
 #   exceeds_supported_limit | within_supported_numeric_limit | requires_context
 #   | requires_manual_review | unknown_ingredient
+# Plus a distinct set for source-bound REACH Annex XVII entry 70 (D4/D5/D6)
+# so a supported entry 70 trigger is NEVER masked by a generic
+# "requires_manual_review" / "not evaluated" headline and the within-threshold,
+# missing-context, transition and unsupported states stay distinct and never
+# imply overall compliance.
 VERDICTS = (
     "exceeds_supported_limit",
     "within_supported_numeric_limit",
     "requires_context",
     "requires_manual_review",
     "unknown_ingredient",
+    "entry70_supported_trigger",
+    "entry70_within_threshold",
+    "entry70_missing_context",
+    "entry70_transition",
+    "entry70_unsupported",
 )
+
+
+def _entry70_verdict_and_context(e70: Optional[Dict[str, Any]]) -> "tuple[Optional[str], Optional[str]]":
+    """Map a source-bound entry 70 verdict dict to a formula verdict headline.
+
+    Centralises the entry 70 presentation semantics so a supported trigger is
+    never masked by the generic CosIng "requires_manual_review"/"Not evaluated"
+    phrasing. Returns ``(verdict, applicable_context)``; both are None when
+    entry 70 is absent or inactive so the caller keeps its CosIng result.
+    """
+    if not e70:
+        return None, None
+    state = e70.get("state")
+    if state == "applicable_exceeds":
+        return ("entry70_supported_trigger",
+                "REACH Annex XVII entry 70 supported trigger: the submitted "
+                "concentration meets or exceeds 0,1 % by weight for the "
+                "supported cosmetic branch. This is a regulatory trigger, not a "
+                "personal-harm or compliance-certificate claim.")
+    if state == "applicable_within":
+        return ("entry70_within_threshold",
+                "REACH Annex XVII entry 70: the submitted concentration is below "
+                "0,1 % by weight for the supported cosmetic branch. This is only "
+                "the numeric comparison, not a compliance certificate.")
+    if state == "missing_context":
+        return ("entry70_missing_context",
+                "REACH Annex XVII entry 70: a restriction applies but the "
+                "submitted product context is incomplete/unsupported; it is not "
+                "evaluated and not a compliance result.")
+    if state == "transition_not_effective":
+        return ("entry70_transition",
+                "REACH Annex XVII entry 70: the assessment date is before the "
+                "branch's effective date; the restriction has not yet applied "
+                "for that date.")
+    if state == "unsupported_use":
+        return ("entry70_unsupported",
+                "REACH Annex XVII entry 70: this use is covered by entry 70 but "
+                "is not a supported cosmetic branch of this tool; not evaluated.")
+    return None, None
 
 
 @dataclass
@@ -470,6 +549,9 @@ class FormulaEvaluation:
     # finding versus a cross-annex rule whose exception applicability is
     # unresolved. Never inferred from the headline determination alone.
     prohibition_finding: Optional[str] = None
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence (raw dict),
+    # surfaced as supplementary evidence and never replacing the CosIng rules.
+    entry70: Optional[Dict[str, Any]] = None
     # The raw submitted context, preserved exactly as supplied (distinct from any
     # canonical interpretation in ``applicable_context`` / the numeric comparison,
     # and never reconstructed from the rule's required context). Absent vs false
@@ -500,6 +582,7 @@ class FormulaEvaluation:
             "source_rule": self.source_rule,
             "provenance": self.provenance,
             "prohibition_finding": self.prohibition_finding,
+            "entry70": self.entry70,
             "submitted_context": self.submitted_context,
         }
 
@@ -533,7 +616,7 @@ def evaluate_formula(formula: Any, registry: Registry) -> Dict[str, Any]:
     for ing in ingredients:
         sub = registry.lookup(ing.name_or_id)
         if sub is not None:
-            sub_id = sub.id or sub.name
+            sub_id = sub.id or sub.name or ""
             if sub_id in seen_ids:
                 raise _validation_error(
                     f"duplicate resolved identity {sub.name!r} at "
@@ -554,28 +637,14 @@ def evaluate_formula(formula: Any, registry: Registry) -> Dict[str, Any]:
 
 
 def _coverage_dict(registry: Registry) -> Dict[str, Any]:
-    """Derive available/missing coverage from the registry provenance."""
-    source_kinds = {
-        "cosing-annex-ii": "Annex II (prohibited)",
-        "cosing-annex-iii": "Annex III (restricted)",
-        "cosing-annex-iv": "Annex IV (colorants)",
-        "cosing-annex-v": "Annex V (preservatives)",
-        "cosing-annex-vi": "Annex VI (UV filters)",
-        "echa-svhc": "ECHA SVHC Candidate List",
-        "echa-annex-xiv": "ECHA Authorisation List (Annex XIV)",
-        "echa-annex-xvii": "ECHA Restrictions (Annex XVII)",
-    }
+    """Derive available/missing coverage from the registry provenance.
+
+    Delegates to :func:`eu_reg_lists.release_policy.coverage_dict` so the
+    formula report uses the SAME release-boundary coverage as the label/batch
+    reports (ECHA is always ``not_included``, never available).
+    """
     verified = getattr(registry, "verified_sources", {}) or {}
-    present = {k for k, v in verified.items() if v.get("present") and v.get("accepted")}
-    available = sorted(present & set(source_kinds))
-    missing = sorted(set(source_kinds) - present)
-    return {
-        "available": available,
-        "missing": missing,
-        "has_annex_ii": "cosing-annex-ii" in available,
-        "note": "Only listed sources are covered; missing lists are a coverage gap, "
-                "NOT a clean result.",
-    }
+    return coverage_dict(verified)
 
 
 def evaluate_formula_file(path: str, registry: Registry) -> Dict[str, Any]:
@@ -606,6 +675,54 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
     # method and snapshot timestamp.
     evidence = check_token(ing.name_or_id, registry, registry.data_updated_at)
     reasons: List[str] = []
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence from the shared
+    # checker (label-only: no context). When the identity is a D4/D5/D6
+    # substance, we RE-EVALUATE it with the submitted formula context so a
+    # supported D5 formula produces an actual entry 70 comparison instead of
+    # copying the missing-context label-only result. This is the same shared
+    # evaluator, never a second engine.
+    e70 = getattr(evidence, "entry70", None)
+    from eu_reg_lists.annex17_entry70 import evaluate_entry70 as _evaluate70
+    if e70 is not None:
+        # Use the identity the shared checker ALREADY resolved for entry 70
+        # (e.g. the D5 CAS 541-02-6 for the INCI alias 'Cyclopentasiloxane'),
+        # rather than requiring the original user token to independently match
+        # the entry 70 alias table. This keeps CAS and verified INCI aliases
+        # equivalent. ``e70['ingredient']`` is the resolved D4/D5/D6 identifier
+        # (may fall back to the supplied token when the checker resolved it
+        # directly). This is the same shared evaluator, never a second engine.
+        _resolved_ident = e70.get("ingredient") or ing.name_or_id
+        _v = _evaluate70(
+            _resolved_ident,
+            percent=ing.percent,
+            unit=ing.unit,
+            product_type=ing.product_type,
+            basis=ing.basis,
+            ready_for_use=ing.ready_for_use,
+            assessment_date=ing.assessment_date,
+            verified_sources=getattr(registry, "verified_sources", None),
+            snapshot_data_updated_at=registry.data_updated_at,
+        )
+        e70 = _v.to_dict()
+        # Record which resolved identity was assessed so the report never
+        # depends on the original token matching the entry 70 alias table.
+        e70["resolved_name"] = (
+            e70.get("ingredient") or getattr(evidence, "cased_name", None))
+        if e70.get("state") != "missing_context" \
+                and e70.get("state") != "source_not_active":
+            reasons.append("REACH Annex XVII entry 70 evaluated with the "
+                           "submitted formula context.")
+        if e70.get("state") == "source_not_active":
+            reasons.append("REACH Annex XVII entry 70 is not source-backed in "
+                           "this snapshot; not evaluated.")
+
+    # Derive the source-bound entry 70 headline (verdict + applicable_context)
+    # once, so EVERY evaluation branch below can show an accurate prominent
+    # trigger for a supported entry 70 branch instead of masking it behind the
+    # generic CosIng "requires_manual_review" / "Not evaluated" phrasing. This
+    # keeps the within-threshold, missing-context, transition and unsupported
+    # states distinct and never implies overall compliance.
+    e70_verdict, e70_context = _entry70_verdict_and_context(e70)
 
     if not evidence.is_in_dataset:
         reasons.append("Exact identifier/name not found; unresolved.")
@@ -619,6 +736,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
         )
 
     sub = registry.lookup(ing.name_or_id)
+    assert sub is not None, "is_in_dataset but registry lookup returned None"
     resolution = _resolution_method(ing.name_or_id, sub)
     reasons.append(f"Resolved {ing.name_or_id!r} to {sub.name!r} by {resolution}.")
     all_rules = [r.__dict__ for r in evidence.rules]
@@ -646,13 +764,22 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             reasons.append(
                 "Identity has no own rule but carries linked group evidence; "
                 "not 'no regulatory evidence'.")
+        # A source-bound entry 70 finding is the prominent headline when it is
+        # present (e.g. a D5/D6 identity with no CosIng rule). Its supported
+        # trigger / within-threshold / missing-context / transition / unsupported
+        # states are surfaced instead of a generic manual-review label, so a
+        # supported trigger is never hidden. When entry 70 is absent/inactive the
+        # identity stays an unresolved unknown (never a clean result).
+        verdict = e70_verdict if e70_verdict else "requires_manual_review"
+        applicable = e70_context or "No CosIng rule; not evaluated."
         return FormulaEvaluation(
             ingredient=ing.name_or_id, resolved_name=sub.name, resolution=resolution,
             is_in_dataset=True, determination="unknown",
-            rule_status=None, annex=None, applicable_context=None,
+            rule_status=None, annex=None, applicable_context=applicable,
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=list(reasons),
-            reasons=list(reasons), verdict="requires_manual_review",
+            entry70=e70,
+            reasons=list(reasons), verdict=verdict,
             rules=all_rules, membership=membership, linked_rules=linked_rules,
         )
 
@@ -681,7 +808,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             scope_finding, scope_reason = _annex2_scope_finding(annex2_rules)
             reasons.append("Annex II prohibition retained; no Annex III numeric "
                            "mapping.")
-            if scope_finding != "unambiguous":
+            if scope_finding != "unambiguous" and scope_reason:
                 reasons.append(scope_reason)
             # Surface the unevaluated conditions of every retained rule
             # (including positive-list conditions), so a multi-list result
@@ -697,6 +824,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
                                     else "Annex II prohibition (no Annex III numeric mapping)."),
                 numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
                 basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=list(reasons),
+            entry70=e70,
                 reasons=list(reasons), verdict="requires_manual_review",
                 rules=all_rules, membership=membership, linked_rules=linked_rules,
                 source_rule=_headline(_source_rule_for(evidence)),
@@ -717,6 +845,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             applicable_context="No Annex III restricted rule; not evaluated.",
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=list(reasons),
+            entry70=e70,
             reasons=list(reasons), verdict="requires_manual_review",
             rules=all_rules, membership=membership, linked_rules=linked_rules,
             source_rule=_headline(_source_rule_for(evidence)),
@@ -734,6 +863,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             applicable_context="Multiple Annex III rules; not evaluated.",
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=list(reasons),
+            entry70=e70,
             reasons=list(reasons), verdict="requires_manual_review",
             rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule=_headline(_source_rule_for(evidence)),
             provenance=provenance,
@@ -764,6 +894,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             applicable_context="Complex rule; not evaluated.",
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=unresolved + reasons,
+            entry70=e70,
             reasons=unresolved + reasons, verdict="requires_manual_review",
             rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule=source_rule, provenance=provenance,
         )
@@ -780,6 +911,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
                                "II exception.",
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=unresolved + reasons,
+            entry70=e70,
             reasons=unresolved + reasons, verdict="requires_manual_review",
             rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule=source_rule, provenance=provenance,
             prohibition_finding="exception_unresolved",
@@ -797,6 +929,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             applicable_context="Unsupported rule; not evaluated.",
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=None, unresolved_requirements=unresolved + reasons,
+            entry70=e70,
             reasons=unresolved + reasons, verdict="requires_manual_review",
             rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule=source_rule, provenance=provenance,
         )
@@ -826,6 +959,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
             applicable_context=applicable_context,
             numeric_comparison=None, submitted_value=_submitted(ing), unit=ing.unit,
             basis=ing.basis, submitted_context=_submitted_context(ing), cap=cap_str, unresolved_requirements=unresolved_all,
+            entry70=e70,
             reasons=unresolved_all, verdict=verdict,
             rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule={**source_rule, "limit": mapping["limit_decimal"],
                                           "limit_unit": mapping["unit"], "basis": mapping["basis"]},
@@ -840,6 +974,7 @@ def _evaluate_one(ing: FormulaIngredient, registry: Registry) -> FormulaEvaluati
         applicable_context=_context_note(mapping, ing),
         numeric_comparison=numeric, submitted_value=_submitted(ing), unit=ing.unit,
         basis=ing.basis, submitted_context=_submitted_context(ing), cap=cap_str, unresolved_requirements=unresolved_all,
+            entry70=e70,
         reasons=unresolved_all, verdict=verdict,
         rules=all_rules, membership=membership, linked_rules=linked_rules, source_rule={**source_rule, "limit": mapping["limit_decimal"],
                                       "limit_unit": mapping["unit"], "basis": mapping["basis"]},
@@ -970,6 +1105,8 @@ def _submitted_context(ing: FormulaIngredient) -> Dict[str, Any]:
         ctx["professional_use"] = ing.professional_use
     if ing.ready_for_use is not None:
         ctx["ready_for_use"] = ing.ready_for_use
+    if ing.assessment_date is not None:
+        ctx["assessment_date"] = ing.assessment_date
     return ctx
 
 
@@ -1057,48 +1194,24 @@ def _scope_text(rule) -> Optional[str]:
     return src_name
 
 
-# Bounded, documented scope/qualification phrases that indicate an Annex II
-# prohibition is NOT an unconditional ban. These are explicit phrases present in
-# the official source names; we never generalise beyond them.
-_ANNEX2_SCOPE_PHRASES = (
-    "when used as a substance",
-    "when used",
-    "with the exception of",
-    "except",
-    "for use only",
-    "in hair dye products",
-    "in nail products",
-    "in shampoo",
-    "other than",
-)
+# Bounded, documented scope/qualification phrases live in the shared checker
+# (``eu_reg_lists.checker.ANNEX2_SCOPE_PHRASES``); the formula evaluator DELEGATES
+# to that single classification so the label path and the formula path never
+# drift into two independent interpretation engines.
+_ANNEX2_SCOPE_PHRASES = None  # kept as a stable anchor symbol; not a separate engine
 
 
 def _annex2_scope_finding(annex2_rules: List[Any]) -> "tuple[str, Optional[str]]":
     """Return ``(prohibition_finding, reason)`` for the retained Annex II rules.
 
-    An Annex II rule is "unambiguous" (an unconditional ban) only when its source
-    name carries no scope/exception qualifier. If ANY retained Annex II rule's
-    source name contains a documented scope/exception phrase, the prohibition is
-    returned as "scope_unresolved" (an unresolved applicability), NOT as an
-    unconditional prohibition, and the reason records the qualifier so the
-    classification is traceable. This is a bounded syntactic check --- it does
-    NOT interpret arbitrary legal text.
+    Delegates to the shared ``eu_reg_lists.checker.annex2_prohibition_finding``
+    so the scoped/exception classification is IDENTICAL to the label path. A
+    banned rule is "unambiguous" (an unconditional ban) only when its source name
+    carries no documented scope/exception qualifier; otherwise the prohibition
+    is returned as "scope_unresolved" (applicability unresolved, never a
+    definitive prohibition).
     """
-    qualifiers: List[str] = []
-    for rule in annex2_rules:
-        src = _scope_text(rule)
-        if not src:
-            continue
-        low = src.lower()
-        for phrase in _ANNEX2_SCOPE_PHRASES:
-            if phrase in low:
-                qualifiers.append(f"source name: {src}")
-                break
-    if qualifiers:
-        reason = ("Annex II prohibition is scoped/conditional in the source "
-                  "name; applicability to this product is unresolved.")
-        return "scope_unresolved", reason
-    return "unambiguous", None
+    return annex2_prohibition_finding(annex2_rules)
 
 
 def _find_mapping(rule: Any, fingerprint: str) -> "tuple[Optional[Dict[str, Any]], List[str]]":

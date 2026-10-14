@@ -51,7 +51,6 @@ EU_COSMETIC_URL = (
 EU_FOOD_URL = (
     "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333"
 )
-ECHA_CAND_URL = "https://echa.europa.eu/candidate-list-table"
 
 # Upstream source descriptions + whether we have a verified date.
 SOURCE_NOTE = {
@@ -63,11 +62,6 @@ SOURCE_NOTE = {
     "food": {
         "name": "Regulation (EC) No 1333/2008 -- food additives",
         "url": EU_FOOD_URL,
-        "source_updated_at": None,
-    },
-    "svhc": {
-        "name": "ECHA SVHC Candidate List",
-        "url": ECHA_CAND_URL,
         "source_updated_at": None,
     },
 }
@@ -105,7 +99,7 @@ def add_rule(name, status, annex, source, conditions, effective_date=None,
              extra_url=None):
     """Attach a regulatory rule (determination) to an existing substance.
 
-    `source` is one of SOURCE_NOTE keys (cosmetic|food|svhc). A substance may
+    `source` is one of SOURCE_NOTE keys (cosmetic|food). A substance may
     carry several rules (e.g. both a food rule and a cosmetic rule); these are
     distinct legitimate determinations, not duplicates.
     """
@@ -347,17 +341,16 @@ for name, aliases, enum, cond in [
 add_rule("FD&C Red 3", "restricted", "Food", "food",
          "Food colourant E127; authorisation limits apply.")
 
-# --- SVHC / CMR (restricted via REACH candidate list) ---
-for name, aliases, cond in [
-    ("Bisphenol A", ["bpa"],
-     "SVHC Candidate List; authorisation/restriction provisions pending "
-     "specific use evaluation."),
-    ("Triclosan", [],
-     "SVHC/restriction; not permitted as a preservative in leave-on products "
-     "in certain uses."),
-]:
-    add_substance(name, aliases)
-    add_rule(name, "restricted", "SVHC", "svhc", cond)
+# ---------------------------------------------------------------------------
+# ECHA / REACH (SVHC) coverage is DEFERRED. The ECHA Candidate List was not
+# acquired or ingested (ECHA acquisition is disabled in fetch.py), so there is
+# no verified SVHC rule and no established reuse basis. Bisphenol A and
+# Triclosan are NOT given a curated "SVHC" determination here; they are only
+# recognised as identity-only (determination stays "unknown") so a lookup is
+# honest rather than an unverified ECHA conclusion.
+# ---------------------------------------------------------------------------
+add_substance("Bisphenol A", ["bpa"])
+add_substance("Triclosan", [])
 
 # ---------------------------------------------------------------------------
 # Identity-only substances (recognised names, NO verified EU determination).
@@ -422,9 +415,9 @@ _identity_only = [
     ("Silicon dioxide", ["silica", "e551"], "7631-86-9", "231-545-4"),
     ("Magnesium sulfate", ["epsom salt", "e518"], "7487-88-9", "231-298-2"),
 ]
-for name, aliases, cas, ec in _identity_only:
+for _name, _aliases, _cas, _ec in _identity_only:
     # determination stays "unknown"; no rule is added.
-    add_substance(name, aliases, cas, ec)
+    add_substance(_name, _aliases, _cas, _ec)
 
 
 # ---------------------------------------------------------------------------

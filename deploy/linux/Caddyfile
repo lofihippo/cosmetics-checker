@@ -1,0 +1,83 @@
+# Caddy reverse-proxy for the two eu-reg services.
+#
+# Regulatory information, not legal advice.
+#
+# TOPOLOGY (one minimal reference, provider-neutral)
+# ------------------------------------------------
+# Two independent FastAPI processes over one shared read-only snapshot, each on
+# its own origin behind a single TLS-terminating reverse proxy. Separate
+# hostnames keep the scan-to-check service worker (scope "/" on its origin)
+# from colliding with the eu-reg-api playground's /static routes:
+#
+#   https://api.EXAMPLE          -> eu-reg-api  (label checker + playground)
+#   https://scan.EXAMPLE         -> scan-to-check (barcode -> checker + PWA)
+#
+#   api.EXAMPLE/ , /formula , /health , /v1/... , /static/...
+#   scan.EXAMPLE/ , /sw.js , /manifest.webmanifest , /api/... , /static/...
+#
+# BOTH services bind to 127.0.0.1; only the proxy is exposed. TLS is terminated
+# here (Caddy issues/renews certificates from a CA automatically for a public
+# domain). Everything behind the proxy is loopback-only.
+#
+# DO NOT expose the two service ports (8000/8010) publicly; only the proxy
+# listens on 80/443 to the public interface.
+#
+# Rate limiting: Caddy's built-in build has NO `rate_limit` directive (that is
+# a third-party plugin). The V1 scope has no accounts, so the bounded,
+# no-accounts rate limit is applied at the APPLICATION layer (an in-memory,
+# per-IP/per-origin limiter over the read endpoints, returning 429 + Retry-After
+# and excluding /health and static assets). See docs/rate-limiting.md and the
+# limit configuration in the proxy/container runbook. If you prefer proxy-level
+# rate limiting, use nginx's built-in limit_req on the same two locations, or a
+# Caddy build with the `ratelimit` plugin -- but do not add a second competing
+# limit. Keep ONE documented limiter.
+#
+# LOCAL VALIDATION (loopback, no public exposure, no machine trust change):
+#   See the local TLS section in deploy/linux/README.md for generating a
+#   temporary CA + certs and pointing Caddy at them so both origins, the
+#   scanner service-worker scope and the error semantics can be exercised over
+#   HTTPS without altering OS/device cert trust. The proxy itself always binds
+#   to the loopback interface for the local validation run. Use
+#   deploy/linux/local-Caddyfile for that run.
+
+{
+	# Bind the proxy to loopback ONLY during local validation. On a real host you
+	# enable the public listener (0.0.0.0) behind your firewall/cloud security
+	# group; a public Caddy listener is NOT used here.
+	admin off
+}
+
+# --- api origin -------------------------------------------------------------
+api.EXAMPLE {
+	encode zstd gzip
+
+	# Explicit routing (all paths to the eu-reg-api process).
+	handle {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Request body / payload limit for the API (the form/check endpoints).
+	request_body {
+		max_size 64MiB
+	}
+}
+
+# --- scan origin ------------------------------------------------------------
+scan.EXAMPLE {
+	encode zstd gzip
+
+	handle {
+		reverse_proxy 127.0.0.1:8010
+	}
+
+	# The scan service's PWA shell + OCR are served alongside /api/; allow the
+	# OCR vendor tree (~27 MiB) plus a healthy margin.
+	request_body {
+		max_size 80MiB
+	}
+}
+
+# HTTP -> HTTPS redirect (leave the public app at HTTP until TLS is trusted).
+http://*.EXAMPLE {
+	redir https://{host}{uri} 308
+}

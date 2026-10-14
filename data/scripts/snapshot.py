@@ -15,12 +15,23 @@ import shutil
 import sys
 import tempfile
 import zipfile
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "packages" / "eu-reg-lists"))
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 
 from eu_reg_lists import load  # noqa: E402
+from eu_reg_lists.annex17_entry70 import (  # noqa: E402
+    ENTRY70_DOCUMENT_FILE,
+    ENTRY70_MAPPING_FILE,
+    MAPPING_SCHEMA_VERSION,
+    mapping_content_hash,
+)
+from eu_reg_lists.release_policy import (  # noqa: E402
+    release_blockers,
+    deferred_with_raw_data_in_tree,
+)
 from normalize import compute_content_hash  # noqa: E402
 
 DISCLAIMER = "Regulatory information, not legal advice."
@@ -49,6 +60,78 @@ def _raw_path(source: str, filename: str) -> str:
     return f"data/raw/{source}/{filename}"
 
 
+def _validate_entry70_binding(root: Path, source: dict, files: set,
+                              manifest: Optional[dict] = None) -> None:
+    """Bind the accepted entry 70 source/mapping record to the RETAINED raw bytes.
+
+    Requires:
+      * the retained official document (PDF) with its verified SHA-256 present
+        in ``source["files"]``;
+      * the retained mapping JSON present and matching the module's canonical
+        contract (document hash + mapping version + supported
+        substances/branches);
+      * the recorded ``mapping`` contract agrees with the raw mapping file and
+        the mapping-content identity.
+
+    A mapping-only source with no official PDF, a metadata mapping that
+    disagrees with the raw mapping file, or an incompatible mapping version is
+    rejected (entry 70 inactive / validation fails), so a candidate is never
+    released from an unbound or self-inconsistent mapping.
+    """
+    # The official document must be present in the source file inventory and on
+    # disk with the verified hash (the generic loop in validate_tree already
+    # verifies the retained bytes against ``doc["sha256"]``). Bind the document
+    # hash to the recorded mapping and the raw mapping file so the retained
+    # document cannot be silently swapped.
+    doc = source.get("files", {}).get(ENTRY70_DOCUMENT_FILE)
+    if not doc:
+        raise ValueError("entry70 source missing the retained official document")
+    if not doc.get("sha256"):
+        raise ValueError("entry70 official document hash not recorded")
+    files.add(f"data/raw/reach-annex-xvii-entry70/{ENTRY70_DOCUMENT_FILE}")
+    # The raw mapping file must be present and agree with the recorded mapping.
+    mapping_file = root / "data/raw/reach-annex-xvii-entry70" / ENTRY70_MAPPING_FILE
+    if not mapping_file.is_file():
+        raise ValueError("entry70 mapping file is not retained")
+    try:
+        raw_mapping = json.loads(mapping_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ValueError("entry70 mapping file is not valid JSON") from exc
+    recorded = source.get("mapping") or {}
+    if not recorded:
+        raise ValueError("entry70 source has no recorded mapping contract")
+    # The recorded and raw mapping document hash must agree AND match the
+    # retained document bytes.
+    if recorded.get("document_sha256") != raw_mapping.get("document_sha256"):
+        raise ValueError("entry70 recorded mapping document hash disagrees with "
+                         "the raw mapping file")
+    if recorded.get("document_sha256") != doc.get("sha256"):
+        raise ValueError("entry70 recorded mapping document hash disagrees with "
+                         "the retained official document")
+    if int(recorded.get("mapping_version", -1)) != int(
+            raw_mapping.get("mapping_version", -1)):
+        raise ValueError("entry70 recorded mapping version disagrees with the "
+                         "raw mapping file")
+    if sorted(recorded.get("supported_substances") or []) != sorted(
+            raw_mapping.get("supported_substances") or []):
+        raise ValueError("entry70 recorded supported substances disagree with "
+                         "the raw mapping file")
+    if sorted(recorded.get("supported_branches") or []) != sorted(
+            raw_mapping.get("supported_branches") or []):
+        raise ValueError("entry70 recorded supported branches disagree with "
+                         "the raw mapping file")
+    # The recorded mapping schema/version must be the supported one and the
+    # mapping-content identity must be recorded and reproducible.
+    if source.get("mapping_schema_version") not in (None, MAPPING_SCHEMA_VERSION):
+        raise ValueError("unsupported entry70 mapping schema version")
+    recorded_hash = source.get("mapping_content_hash")
+    recomputed = mapping_content_hash(recorded)
+    if recorded_hash is not None and recorded_hash != recomputed:
+        raise ValueError("entry70 mapping content hash disagrees with the "
+                         "recorded mapping")
+    files.add(f"data/raw/reach-annex-xvii-entry70/{ENTRY70_MAPPING_FILE}")
+
+
 def validate_tree(root: Path) -> tuple[dict, set[str]]:
     """Check source hashes, format parity and normalized content identity."""
     meta = _json(root / "data/processed/metadata.json")
@@ -72,6 +155,14 @@ def validate_tree(root: Path) -> tuple[dict, set[str]]:
             entry = attempts.get(key, {})
             if not entry.get("accepted") or entry.get("sha256") not in hashes:
                 raise ValueError(f"accepted source has no matching active manifest: {key}")
+        # Bind the entry 70 source/mapping record to the RETAINED raw bytes: the
+        # official document (verified SHA-256) and the raw mapping file must both
+        # be present and agree with the recorded mapping contract. A mapping-only
+        # source with no official PDF is rejected; a metadata mapping that
+        # disagrees with the raw mapping file while keeping the same content hash
+        # is rejected (different reproducible identity).
+        if key == "reach-annex-xvii-entry70":
+            _validate_entry70_binding(root, source, files, manifest=attempts.get(key))
 
     jsonl_path = root / "data/processed/eu_reg_lists.jsonl"
     records = [json.loads(line) for line in jsonl_path.read_text().splitlines()
@@ -122,6 +213,28 @@ def validate_tree(root: Path) -> tuple[dict, set[str]]:
     return meta, files
 
 
+def _assert_release_eligible(root: Path, meta: dict) -> None:
+    """Reject an input tree that carries deferred (ECHA) data for release.
+
+    Integrity verification (``validate_tree``) is NOT permission to distribute:
+    a formerly-accepted ECHA directory in an input tree, or a verified historical
+    bundle containing ECHA rules, is release-ineligible even though it verifies.
+    We never silently rewrite the accepted baseline or delete source evidence;
+    we reject the ineligible input with a clear diagnostic so the caller can
+    construct and verify an explicitly-derived CosIng-only release copy instead.
+    """
+    blockers = release_blockers(meta.get("verified_sources") or {})
+    raw_blockers = deferred_with_raw_data_in_tree(root)
+    all_blockers = sorted(set(blockers) | set(raw_blockers))
+    if all_blockers:
+        raise ValueError(
+            "snapshot is not release-eligible: deferred (ECHA) source(s) present "
+            f"in the input tree: {', '.join(all_blockers)}. ECHA is deliberately "
+            "excluded from this release; build and verify an explicit "
+            "CosIng-only release copy instead."
+        )
+
+
 def export_snapshot(root: Path, output: Path) -> dict:
     """Create a deterministic ZIP; refuse to replace an existing bundle."""
     # Validate and package copied bytes, so a concurrent refresh cannot mix the
@@ -129,6 +242,9 @@ def export_snapshot(root: Path, output: Path) -> dict:
     with tempfile.TemporaryDirectory(prefix="eu-snapshot-export-") as tmp:
         tree = Path(tmp)
         meta = _json(root / "data/processed/metadata.json")
+        # Release eligibility is separate from integrity: a deferred (ECHA)
+        # source in the input tree blocks distribution even though it verifies.
+        _assert_release_eligible(root, meta)
         names = set(FIXED_FILES)
         for key, source in meta["verified_sources"].items():
             names.update(_raw_path(key, name) for name in source.get("files", {}))

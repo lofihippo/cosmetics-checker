@@ -43,7 +43,8 @@ leaves `numeric_comparison` null and returns `requires_context` /
       "product_type": "rust_inhibitor",  // product context (required for a product-scoped rule)
       "body_area": null,                 // optional
       "professional_use": null,          // optional boolean
-      "ready_for_use": null              // optional boolean
+      "ready_for_use": null,             // optional boolean
+      "assessment_date": "2028-01-01"    // optional ISO-8601 assessment date (required for a transition boundary)
     }
   ]
 }
@@ -59,6 +60,9 @@ Validation contract (rejected, never coerced):
   JSON number and its exact string equivalent compare identically.
 - `unit` / `basis` / `product_type` / `body_area` are optional strings.
 - `professional_use` / `ready_for_use` are optional booleans.
+- `assessment_date` is an optional ISO-8601 date (`YYYY-MM-DD`). A supplied but
+  malformed date is rejected (never silently ignored). It is required for an
+  effective/transition-date boundary evaluation.
 - Duplicate ingredient entries and duplicate **resolved** identities (a name plus
   its own CAS or alias) are **rejected** — never silently combined.
 - Missing concentration is allowed but stays **unevaluated**.

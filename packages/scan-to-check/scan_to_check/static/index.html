@@ -566,6 +566,41 @@ video { width:100%; border-radius:6px; background:#000; }
         const ev = make("div", "meta", item);
         ev.appendChild(textNode("Evaluation: " + r.evaluation + (r.evaluation_reason ? " — " + r.evaluation_reason : "")));
       }
+      // Prominent user-facing interpretation derived from the SHARED assessment
+      // (never from the raw per-rule status alone). A scoped/exception-qualified
+      // prohibition is presented as scope-unresolved, not as an unconditional ban.
+      // An independent, source-bound CosIng determination takes headline priority
+      // over the supplementary REACH Annex XVII entry 70 (D4/D5/D6) finding, so a
+      // definitive CosIng prohibition is prominent; the entry-70 finding is
+      // rendered separately below. A retained, source-bound entry-70 finding is
+      // a restriction finding (identified-but-unevaluated on a label-only check),
+      // never a category violation and never an unverified "no verified rule".
+      const scopeUnresolved = r.prohibition_finding === "scope_unresolved";
+      const evalState = r.evaluation;
+      // Whether this ingredient carries a retained, source-bound entry 70
+      // finding. Declared here so the later "no verified rule" fallback (which
+      // must not say "no rule" when entry 70 is real evidence) can see it.
+      const e70 = r.entry70;
+      const hasEntry70 = e70 && e70.state &&
+        e70.state !== "not_entry70_substance" && e70.state !== "source_not_active";
+      if (r.prohibition_finding === "unambiguous" || evalState === "prohibition_identified") {
+        const hl = make("div", "meta headline", item);
+        hl.appendChild(textNode("Banned / prohibited by CosIng (Annex II). No concentration evaluation is applicable."));
+      } else if (scopeUnresolved || evalState === "restriction_identified" ||
+          evalState === "listing_identified") {
+        const hl = make("div", "meta headline", item);
+        if (scopeUnresolved) {
+          hl.appendChild(textNode(r.status === "banned"
+            ? "Prohibition scope unresolved." : "Exception requires review."));
+        } else if (evalState === "restriction_identified") {
+          hl.appendChild(textNode("Restriction identified (context required)."));
+        } else {
+          hl.appendChild(textNode("Listing identified (contextual review)."));
+        }
+      } else if (hasEntry70) {
+        const hl = make("div", "meta headline", item);
+        hl.appendChild(textNode("REACH Annex XVII entry 70 restriction identified (context required). No supported trigger is asserted; applicability requires the missing product/product-type/date context."));
+      }
 
       // Explicit source-backed group membership.
       (r.membership || []).forEach(function (m) {
@@ -575,12 +610,35 @@ video { width:100%; border-radius:6px; background:#000; }
           "). Group evidence is shown as linked — membership does not establish every condition applies."));
       });
 
+      // Source-bound REACH Annex XVII entry 70 (D4/D5/D6): surface the
+      // identified-but-unevaluated restriction (label-only), clearly separate
+      // from the CosIng findings. Never a category violation by itself.
+      if (r.entry70) {
+        const r70 = r.entry70;
+        const e70Block = make("div", "rule entry70", item);
+        make("span", "annex", e70Block).textContent = "Annex XVII entry 70";
+        make("span", null, e70Block).textContent = " · " +
+          (r70.source && r70.source.regulation ? r70.source.regulation : "regulation unknown");
+        const d70 = make("dl", null, e70Block);
+        dlRow(d70, "Substance", (r70.substance_short ? "Substance " + r70.substance_short + " (D4/D5/D6)" : "—"));
+        dlRow(d70, "State", r70.state || "Not provided");
+        dlRow(d70, "Reason", r70.reason || "Not provided");
+        if (r70.threshold) dlRow(d70, "Market threshold", r70.threshold);
+        if (r70.effective_date) dlRow(d70, "Effective date", r70.effective_date);
+        if (r70.branch) dlRow(d70, "Applicable branch", r70.branch);
+        if (r70.source && r70.source.source_url && isHttpUrl(r70.source.source_url)) {
+          make("dt", null, d70).textContent = "Source URL";
+          const dd = make("dd", null, d70);
+          dd.appendChild(safeLink(r70.source.source_url, "open source"));
+        }
+      }
+
       const direct = r.rules || [];
       const linked = r.linked_rules || [];
       // Do not collapse distinct rules by an incomplete display key; render each.
       direct.forEach(function (rule) { renderFinding(r, rule, item, false); });
       linked.forEach(function (rule) { renderFinding(r, rule, item, true); });
-      if (!direct.length && !linked.length) {
+      if (!direct.length && !linked.length && !hasEntry70) {
         const miss = make("div", "rule missing", item);
         miss.appendChild(textNode(r.is_in_dataset ? "Known identity, no verified rule" : "Not in dataset — not clean"));
       }
@@ -589,7 +647,9 @@ video { width:100%; border-radius:6px; background:#000; }
     const cov = rep.coverage || {};
     const c = make("div", "attrib", resultsEl);
     c.appendChild(textNode("Coverage: " + ((cov.available || []).join(", ") || "none") +
-      " — missing: " + ((cov.missing || []).join(", ") || "none") + ". " + (cov.note || "")));
+      " — missing: " + ((cov.missing || []).join(", ") || "none") +
+      " — not included (deliberately deferred): " + ((cov.not_included || []).join(", ") || "none") +
+      ". " + (cov.note || "")));
     const d = make("div", "attrib", resultsEl);
     d.appendChild(textNode(DISC + "  Product provenance is separate from regulatory evidence."));
     resultsEl.hidden = false;

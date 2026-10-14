@@ -32,6 +32,8 @@ from scan_to_check.obf import (  # noqa: E402
     validate_barcode,
 )
 
+# Use the deterministic in-memory registry (not the gitignored production
+# snapshot) so the scan flow tests run on a clean checkout.
 HAS_SNAPSHOT = (ROOT / "data/processed/eu_reg_lists.sqlite").exists()
 
 
@@ -63,9 +65,11 @@ def _beauty(barcode, ingredients, name="Fixture Cosmetic", brands="Fixture Brand
 
 @pytest.fixture
 def client_snapshot():
-    if not HAS_SNAPSHOT:
-        pytest.skip("no processed snapshot")
-    return load(str(ROOT / "data/processed/eu_reg_lists.sqlite"))
+    # Deterministic in-memory registry (see conftest.make_registry), so the scan
+    # flow tests never depend on a gitignored production snapshot.
+    from conftest import make_registry
+    reg, _meta = make_registry()
+    return reg
 
 
 @pytest.fixture

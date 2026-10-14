@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import errno
 import html
 import io
 import json
@@ -246,7 +247,7 @@ class Dataset:
         ambiguous_names = {k for k, v in name_owners.items() if len(v) > 1}
 
         owners = {s.id: s for s in self.substances}
-        name_of = {s.id: s.name.lower() for s in self.substances}
+        name_of = {s.id: (s.name.lower() if s.name else "") for s in self.substances}
 
         # Alias -> owners. Reject aliases that map to >1 substance OR collide
         # with a different substance's canonical name.
@@ -312,7 +313,7 @@ FLAG_STATUSES = ("banned", "restricted", "allowed_with_conditions")
 def _strongest(rule_list: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not rule_list:
         return None
-    return max(rule_list, key=lambda r: RANK.get(r.get("status"), 0))
+    return max(rule_list, key=lambda r: RANK.get(r.get("status") or "unknown", 0))
 
 
 def status_to_severity(status: Optional[str]) -> str:
@@ -543,7 +544,17 @@ def render_csv(result: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 def _read_input(value: str) -> str:
     p = Path(value)
-    if p.is_file():
+    try:
+        is_file = p.is_file()
+    except OSError as exc:
+        # On Python 3.12, Path(value).is_file() raises ENAMETOOLONG when `value`
+        # is a long pasted ingredient label. That is a valid raw string, not a
+        # file reference (no file can exist at a path that exceeds the OS path
+        # limit), so treat it as a raw label rather than a filename.
+        if exc.errno == errno.ENAMETOOLONG:
+            return value
+        raise
+    if is_file:
         return p.read_text(encoding="utf-8")
     return value
 

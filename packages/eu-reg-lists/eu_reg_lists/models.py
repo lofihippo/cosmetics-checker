@@ -21,17 +21,20 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
-# Status ranks for consolidating multiple rules (highest wins for headline).
-RANK = {"unknown": 0, "allowed_with_conditions": 1, "restricted": 2, "banned": 3}
+# Status ranks used to consolidate multiple rules (highest wins for headline).
+# ``listed`` (SVHC Candidate List listing info) sits between ``allowed_with_conditions``
+# and ``restricted``: it is a stronger evidence signal than an unrestricted
+# conditional entry but is NOT a numerical restriction or a prohibition.
+RANK = {"unknown": 0, "allowed_with_conditions": 1, "listed": 2, "restricted": 3, "banned": 4}
 
-DETERMINATIONS = ("unknown", "allowed_with_conditions", "restricted", "banned")
+DETERMINATIONS = ("unknown", "allowed_with_conditions", "listed", "restricted", "banned")
 
 
 @dataclass
 class Rule:
     """A single regulatory determination from a source export."""
 
-    status: Optional[str]          # banned | restricted | allowed_with_conditions
+    status: Optional[str]  # banned | restricted | listed | allowed_with_conditions
     annex: Optional[str]           # Annex II..VI | SVHC | Annex XIV | Annex XVII | Food
     regulation: Optional[str]      # human-readable regulation citation
     source_url: Optional[str]
@@ -96,7 +99,7 @@ class Substance:
     def strongest_rule(self) -> Optional[Rule]:
         if not self.rules:
             return None
-        return max(self.rules, key=lambda r: RANK.get(r.status, 0))
+        return max(self.rules, key=lambda r: RANK.get(r.status or "unknown", 0))
 
     def keys(self) -> List[str]:
         out = [self.name.strip().lower()] if self.name else []
@@ -137,12 +140,24 @@ class CheckResult:
     # unevaluated (never a "compliant" claim).
     evaluation: Optional[str] = None
     evaluation_reason: Optional[str] = None
+    # Classification of a retained Annex II prohibition. ``unambiguous`` means
+    # an unconditional (definitive) prohibition; ``scope_unresolved`` means the
+    # source scope/exception applicability is unresolved (never presented as a
+    # definitive prohibition). Mirrors the formula evaluator's field.
+    prohibition_finding: Optional[str] = None
     # Explicit source-backed group membership: this ingredient is a named
     # member of one or more group source entries. ``linked_rules`` carries the
     # group's own rules (surface as evidence, never merged), and ``membership``
     # records the group source identity/reference and the member-name evidence.
     membership: List[Dict[str, Any]] = field(default_factory=list)
     linked_rules: List[Rule] = field(default_factory=list)
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence. ``entry70`` is
+    # None unless the resolved identity is a D4/D5/D6 substance; when present it
+    # is the raw entry-70 verdict dict from :mod:`.annex17_entry70`. It NEVER
+    # replaces a CosIng prohibition and is never a category violation on its
+    # own: a label-only check has no concentration/product-type context, so it
+    # surfaces the entry-70 finding as identified-but-unevaluated.
+    entry70: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -164,6 +179,8 @@ class CheckResult:
             "cased_name": self.cased_name,
             "evaluation": self.evaluation,
             "evaluation_reason": self.evaluation_reason,
+            "prohibition_finding": self.prohibition_finding,
             "membership": self.membership,
             "linked_rules": [r.__dict__ for r in self.linked_rules],
+            "entry70": self.entry70,
         }

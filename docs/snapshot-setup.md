@@ -3,8 +3,11 @@
 Regulatory information, not legal advice.
 
 A new checkout does not contain the gitignored regulatory data. Transfer an
-existing, verified Annex-II + III snapshot with these commands; they never fetch
-or normalize data.
+existing, verified snapshot with these transfer commands; verify/import do not
+fetch or normalize data. The accepted local checkpoint now includes CosIng
+Annex II–VI and the supported REACH entry-70 branches. The older `annex-ii.zip`
+names below are examples, not a claim that all bundles have identical coverage.
+Use source code compatible with the bundle and inspect verification output.
 
 ## Acquiring the official CosIng exports
 
@@ -87,14 +90,17 @@ curl --get http://127.0.0.1:8000/v1/check \
   --data-urlencode 'ingredients=Aqua, Benzene, TotallyFake123'
 ```
 
-Compare health's hash, date and counts with verification output. The combined
-Annex II + III snapshot has 2,196 substances, 2,104 verified substances and the
-current content hash depends on the linked data (regenerate with
-`make refresh-data` to match). Benzene and 1,4-dioxane are flagged with
-citations; Aqua and an unmatched ingredient stay unknown. Annex III restricted
-entries (e.g. Ammonia, Thioglycolic acid) surface their conditions (product
-types, concentration limits, other restrictions, warnings). Annex IV–VI and
-ECHA remain missing coverage.
+Compare health's hash, date, counts and coverage with the verification output
+for the exact bundle you restored. Do not refresh data merely to make historical
+counts match. The accepted October 14 local content hash begins `5145f70e`, with
+2,376 identities and 2,298 ordinary-rule verified identities. Its coverage is
+CosIng II–VI plus the supported entry-70 branches; ECHA exports remain excluded.
+Older bundles retain their own counts, timestamps and narrower coverage.
+
+Benzene and 1,4-dioxane are flagged with citations; Aqua and an unmatched
+ingredient remain unknown. Conditional rules retain unresolved requirements.
+Entry-70 evaluation is enabled only by a compatible accepted source mapping in
+the loaded snapshot, not simply by installing newer code.
 
 This completes local snapshot transfer and restoration, not unattended weekly
 refresh, publication, or public hosting. Regulatory information, not legal

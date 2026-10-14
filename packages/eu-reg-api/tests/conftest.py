@@ -92,6 +92,82 @@ def make_registry():
                                                   "value": "25%"}]})],
         sources=["cosing-annex-iv", "cosing-annex-vi"],
     )
+    # A scoped Annex II prohibition (like Hydroquinone/CI 44045 in the real
+    # snapshot): the source name carries a scope/exception qualifier, so the
+    # shared checker classifies it as scope_unresolved (never an unconditional
+    # "banned" headline). Preserves a second banned rule for the unaffected
+    # case, and a linked Annex III ruled to exercise the restriction headline.
+    hydroq = erl.Substance(
+        id="hydroquinone", name="Hydroquinone", cas="123-31-9", ec="204-617-8",
+        determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        conditions=None,
+                        raw={"source_kind": "cosing-annex-ii",
+                             "source_file": "COSING_Annex_II_v2.txt",
+                             "source_sha256": "abc",
+                             "row_reference": "COSING_Annex_II_v2.txt#1339",
+                             "entry_number": 1339,
+                             "reference_number": 1339,
+                             "official_reference": 1339,
+                             "accepted": True,
+                             "retrieved_at": RETRIEVED_AT,
+                             "conditions_list": None,
+                             "source_row": {
+                                 "Chemical name / INN":
+                                     "Hydroquinone with the exception of entry 14"},
+                             }),
+               erl.Rule(status="restricted", annex="Annex III",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-iii",
+                        conditions="Maximum concentration in ready for use preparation: 0.02%",
+                        raw={"source_kind": "cosing-annex-iii",
+                             "source_file": "COSING_Annex_III_v2.txt",
+                             "source_sha256": "abc",
+                             "row_reference": "COSING_Annex_III_v2.txt#14",
+                             "entry_number": 14, "reference_number": 14,
+                             "official_reference": 14, "accepted": True,
+                             "retrieved_at": RETRIEVED_AT,
+                             "conditions_list": [{"field": "max_concentration",
+                                                  "label": "Maximum concentration",
+                                                  "value": "0.02%"}]})],
+        sources=["cosing-annex-ii", "cosing-annex-iii"],
+    )
+    # REACH Annex XVII entry 70 (D4/D5/D6) identities so the label playground and
+    # formula editor can exercise the source-bound entry-70 finding through the
+    # real API. D4 carries an independent unbanned CosIng Annex II prohibition;
+    # D5/D6 are recognised identities with no CosIng rule (only the entry-70
+    # finding applies on a label-only check).
+    d4 = erl.Substance(
+        id="d4", name="Octamethylcyclotetrasiloxane; D4", cas="556-67-2",
+        ec="209-136-7", determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        raw={"source_kind": "cosing-annex-ii",
+                             "source_file": "COSING_Annex_II_v2.txt",
+                             "source_sha256": "abc",
+                             "row_reference": "COSING_Annex_II_v2.txt#1",
+                             "entry_number": 1, "reference_number": 1,
+                             "official_reference": 1, "accepted": True,
+                             "retrieved_at": RETRIEVED_AT})],
+        sources=["cosing-annex-ii"],
+    )
+    d5 = erl.Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[], aliases=["D5"],
+        sources=[],
+    )
+    d6 = erl.Substance(
+        id="dodecamethylcyclohexasiloxane",
+        name="Dodecamethylcyclohexasiloxane", cas="540-97-6",
+        ec="208-762-8", determination="unknown", rules=[], aliases=["D6"],
+        sources=[],
+    )
     verified_sources = {
         "cosing-annex-ii": {"kind": "cosing-annex", "present": True,
                             "accepted": True, "fetched": True,
@@ -105,17 +181,36 @@ def make_registry():
         "echa-svhc": {"kind": "echa-svhc", "present": False,
                       "accepted": False, "fetched": False,
                       "retrieval_error": "HTTPError"},
+        # Accepted, compatible entry 70 source/mapping record so the REACH
+        # Annex XVII entry 70 evaluator/coverage is active for these tests.
+        "reach-annex-xvii-entry70": {
+            "kind": "reach-legal-act", "present": True, "accepted": True,
+            "fetched": True, "retrieval_error": None,
+            "files": {"OJ_L_202401328_EN.pdf": {
+                "sha256": ("2ae8024b749623971c03967ba6b829e8abaa0285c8fee1"
+                           "b3e459c1a24d730966"),
+                "byte_len": 488977}},
+            "data_updated_at": DATA_UPDATED_AT,
+            "retrieved_at": RETRIEVED_AT,
+            "mapping": {
+                "mapping_version": 1,
+                "document_sha256": ("2ae8024b749623971c03967ba6b829e8abaa028"
+                                    "5c8fee1b3e459c1a24d730966"),
+                "supported_substances": ["D4", "D5", "D6"],
+                "supported_branches": ["washoff_cosmetic", "other_cosmetic"],
+            },
+        },
     }
     metadata = {
         "title": "test", "version": "0.2.0",
         "data_updated_at": DATA_UPDATED_AT,
         "content_hash": "testhash1234",
-        "count_substances": 4, "count_verified_rules": 3,
+        "count_substances": 5, "count_verified_rules": 5,
         "count_identity_only": 1, "count_quarantined": 0,
         "verified_sources": verified_sources,
         "snapshot": verified_sources,
     }
-    reg = erl.Registry([benzene, water, dioxane, zno],
+    reg = erl.Registry([benzene, water, dioxane, zno, hydroq, d4, d5, d6],
                        data_updated_at=DATA_UPDATED_AT,
                        verified_sources=verified_sources, metadata=metadata)
     return reg, metadata

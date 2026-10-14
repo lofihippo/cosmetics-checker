@@ -99,7 +99,28 @@ def _registry():
     metadata = {"data_updated_at": DATA_UPDATED_AT, "version": "0.2.0",
                 "count_substances": 5, "verified_sources": verified,
                 "snapshot": verified}
-    reg = Registry([toluene, benzene, hydroq, aqua, zno],
+    # A D5 siloxane identity (no CosIng rule) so an INCI-name formula can
+    # exercise the REACH Annex XVII entry 70 evaluator through the real API.
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    d5 = Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[], aliases=["D5"],
+        sources=[])
+    verified[ENTRY70_SOURCE_KIND] = {
+        "present": True, "accepted": True, "kind": "reach-legal-act",
+        "files": {"OJ.pdf": {"sha256": ENTRY70_SOURCE["document_sha256"],
+                             "byte_len": 1}},
+        "data_updated_at": DATA_UPDATED_AT, "retrieved_at": DATA_UPDATED_AT,
+        "mapping": {
+            "mapping_version": ENTRY70_SOURCE["mapping_version"],
+            "document_sha256": ENTRY70_SOURCE["document_sha256"],
+            "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+            "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+        },
+    }
+    metadata["verified_sources"] = verified
+    metadata["snapshot"] = verified
+    reg = Registry([toluene, benzene, hydroq, aqua, zno, d5],
                    data_updated_at=DATA_UPDATED_AT,
                    verified_sources=verified, metadata=metadata)
     return reg, metadata
@@ -598,3 +619,97 @@ def test_status_announcement_on_submit(page):
     p.evaluate("window.dispatchSubmit()")
     p.wait_for_timeout(20)
     assert "Evaluating" in _message(p)
+
+
+def test_inci_entry70_washoff_formula_through_visible_controls(page):
+    """A real user submits an INCI-name D5 formula with wash-off context through
+    ordinary browser controls and gets the REACH entry 70 finding (real API)."""
+    p, server = page
+    _fill(p, 0, ingredient="Cyclopentasiloxane", percent="0.5", unit="%",
+          basis="ready_for_use", product="wash-off")
+    # Set the assessment date via the visible input (blank: not supplied; set an
+    # explicit post-transition date).
+    p.fill(".ingredient-row .f-assessment-date", "2028-01-01")
+    _evaluate(p)
+    body = p.text_content("#formula-results")
+    assert "entry 70" in body.lower() or "applicable_exceeds" in body.lower()
+    assert "Cyclopentasiloxane" in body
+    assert "wash-off" in body.lower()
+    assert "Regulatory information, not legal advice" in p.content()
+
+
+def test_entry70_formula_has_source_specific_comparison_and_citation(page):
+    """The D5 supported formula trigger shows the ACTUAL entry-70 comparison,
+    regulation, source URL and loaded-snapshot timestamp in its own REACH block —
+    not misleading generic 'Numeric comparison: Not evaluated' / provenance rows
+    (those describe an ABSENT CosIng evaluation)."""
+    p, server = page
+    _fill(p, 0, ingredient="Cyclopentasiloxane", percent="0.5", unit="%",
+          basis="ready_for_use", product="wash-off")
+    p.fill(".ingredient-row .f-assessment-date", "2028-01-01")
+    _evaluate(p)
+    body = p.text_content("#formula-results")
+    # The source-specific REACH block is labelled and populated.
+    assert "REACH Annex XVII entry 70 assessment".lower() in body.lower(), body
+    assert "applicable (exceeds threshold)" in body.lower() or "applicable " in body.lower()
+    assert "0.1 % by weight" in body
+    assert ">=" in body
+    assert "wash-off cosmetic" in body.lower()
+    assert "2020-01-31" in body
+    assert "(EU) 2024/1328" in body
+    assert "32024R1328" in body
+    assert "moew.government.bg" in body
+    assert "data_updated_at" in body.lower()
+    # The loaded-snapshot timestamp is present in the result summary.
+    assert "data_updated_at" in p.text_content("#summary").lower()
+    # Misleading generic CosIng rows are NOT shown: entry 70 is not a CosIng rule.
+    assert "not evaluated" not in body.lower()
+    assert "Numeric comparison" not in body
+    assert "Prohibition classification" not in body
+    # Coverage names the supported entry-70 branches, never full Annex XVII.
+    assert "REACH Annex XVII (entry 70) covered: entry 70 cosmetic branches" in \
+        p.text_content("#summary"), p.text_content("#summary")
+    assert "washoff_cosmetic" in p.text_content("#summary")
+    assert "other_cosmetic" in p.text_content("#summary")
+
+
+def test_entry70_missing_context_is_not_a_trigger(page):
+    """An entry-70 formula with no product type stays unresolved (missing
+    context) — the verdict wording identifies the restriction without asserting
+    it applies/triggered."""
+    p, server = page
+    _fill(p, 0, ingredient="Cyclopentasiloxane", percent="0.5", unit="%",
+          basis="ready_for_use")
+    p.fill(".ingredient-row .f-assessment-date", "2028-01-01")
+    _evaluate(p)
+    body = p.text_content("#formula-results")
+    assert "missing context" in body.lower() or "restriction identified" in body.lower()
+    assert "applicable_exceeds" not in body
+    assert "supported trigger" not in body.lower()
+
+
+def test_inci_entry70_missing_product_type_is_unresolved(page):
+    """An INCI D5 formula with no wash-off/other product type stays unresolved
+    (missing context), never a trigger."""
+    p, server = page
+    _fill(p, 0, ingredient="Cyclopentasiloxane", percent="0.5", unit="%",
+          basis="ready_for_use")
+    p.fill(".ingredient-row .f-assessment-date", "2028-01-01")
+    _evaluate(p)
+    body = p.text_content("#formula-results")
+    assert "missing context" in body.lower() or "not evaluated" in body.lower()
+    assert "applicable_exceeds" not in body
+
+
+def test_inci_entry70_bad_date_rejected_by_api(page):
+    """A malformed assessment date is rejected by the API (never silently
+    ignored) and shown as a request error; no result card is produced."""
+    p, server = page
+    _fill(p, 0, ingredient="Cyclopentasiloxane", percent="0.5", unit="%",
+          basis="ready_for_use", product="wash-off")
+    p.fill(".ingredient-row .f-assessment-date", "notadate")
+    p.evaluate("window.dispatchSubmit()")
+    p.wait_for_timeout(300)
+    msg = _message(p)
+    assert "Request error" in msg or "error" in msg.lower()
+    assert _count_cards(p) == 0

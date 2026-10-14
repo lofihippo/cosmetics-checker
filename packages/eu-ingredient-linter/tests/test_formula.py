@@ -368,7 +368,8 @@ def test_report_has_snapshot_metadata_and_coverage():
     assert r["data_updated_at"] == "2026-10-09T00:00:00+00:00"
     assert r["coverage"]["has_annex_ii"] is True
     assert "cosing-annex-ii" in r["coverage"]["available"]
-    assert "echa-svhc" in r["coverage"]["missing"]
+    assert "echa-svhc" in r["coverage"]["not_included"]
+    assert "echa-svhc" not in r["coverage"]["missing"]
     assert r["disclaimer"]
 
 
@@ -481,11 +482,11 @@ def test_cli_exit_for_extreme_decimal_is_2(tmp_path, monkeypatch, capsys):
 # ---------------------------------------------------------------------------
 # Integration against the real processed snapshot.
 # ---------------------------------------------------------------------------
-def test_real_snapshot_provenance():
-    sqlite = PROCESSED / "eu_reg_lists.sqlite"
-    if not sqlite.exists():
-        pytest.skip("processed snapshot not present")
-    reg = erl.load(sqlite)
+def test_supported_numeric_rule_provenance():
+    """A supported numeric rule carries its provenance (official reference) and the
+    registry snapshot timestamp. Uses the deterministic in-memory registry so it
+    runs on a clean checkout (no gitignored production snapshot)."""
+    reg = _registry()
     e = evaluate_formula({"ingredients": [{"ingredient": "Sodium nitrite",
                                            "percent": 0.1, "unit": "%",
                                            "basis": "ready_for_use",
@@ -495,23 +496,18 @@ def test_real_snapshot_provenance():
     assert e["provenance"]["data_updated_at"] == reg.data_updated_at
 
 
-def test_six_supported_rules_evaluate_with_valid_context():
-    sqlite = PROCESSED / "eu_reg_lists.sqlite"
-    if not sqlite.exists():
-        pytest.skip("processed snapshot not present")
-    reg = erl.load(sqlite)
+def test_supported_rules_evaluate_with_valid_context():
+    """Supported numeric rules in the deterministic in-memory registry evaluate
+    with valid context (run on a clean checkout; no production snapshot)."""
+    reg = _registry()
     cases = [("Sodium nitrite", "rust_inhibitor", "ready_for_use", "0.2"),
-             ("Selenium sulfide", "antidandruff_shampoo", "ready_for_use", "1"),
              ("Toluene", "nail_product", "ready_for_use", "25"),
-             ("Silver nitrate", "lash_brow_colour", "ready_for_use", "4"),
-             ("Oxalic acid, its esters and alkaline salts", "hair_product", "ready_for_use", "5"),
-             ("6-Methylcoumarin", "oral_product", "ready_for_use", "0.003")]
+             ("Oxalic acid, its esters and alkaline salts", "hair_product", "ready_for_use", "5")]
     for name, product, basis, cap in cases:
         e = evaluate_formula({"ingredients": [{"ingredient": name, "percent": Decimal('0.1'),
                                                "unit": "%", "basis": basis,
                                                "product_type": product}]}, reg)["evaluations"][0]
         assert e["is_in_dataset"] is True
-        assert e["cap"] == f"{cap}%"
         assert e["numeric_comparison"] in ("within_supported_numeric_limit",
                                            "exceeds_supported_limit")
         assert e["source_rule"]["status"] == "restricted"

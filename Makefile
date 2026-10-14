@@ -1,9 +1,12 @@
 # EU Compliance Developer Tools -- Phase 1 (eu-reg-lists)
-.PHONY: refresh-data test lint build clean package-test openapi snapshot-export snapshot-verify snapshot-import frontend-test quality coverage
+.PHONY: refresh-data test lint build clean package-test openapi snapshot-export snapshot-verify snapshot-import frontend-test quality coverage deploy-build deploy-build-consume-existing
 
-# Python used for tooling
-PY      ?= .venv/bin/python
-PIP     ?= .venv/bin/pip
+# Python used for tooling.
+# Use the active `python` interpreter by default so the SAME interpreter that
+# installed the dev deps is used consistently (workflow setup-python or a local
+# venv). Override with `make PY=/path/to/python`.
+PY      ?= python3
+PIP     ?= python3 -m pip
 
 # --- Data pipeline -----------------------------------------------------
 # fetch official exports -> normalize into processed artifacts
@@ -22,6 +25,52 @@ snapshot-verify:
 
 snapshot-import:
 	$(PY) data/scripts/snapshot.py import "$(SNAPSHOT)" --destination "$(DEST)"
+
+# Reproducible LOCAL release kit (local-only; never publishes/hosts).
+# Builds a source-independent release kit from a verified snapshot bundle into a
+# NEW release-kit directory.
+#
+# Two coherent modes:
+#   * Default `make deploy-build` EXPORTS a fresh snapshot bundle from the live
+#     checkout's accepted snapshot into `DEPLOY_BUNDLE` (refusing to overwrite an
+#     existing archive) then builds the kit into a NEW `DEPLOY_DEST`.
+#   * `make deploy-build-consume-existing` consumes an ALREADY-EXISTING trusted
+#     bundle without exporting a new one (the default "export" step refuses to
+#     overwrite it). You may also set `DEPLOY_BUNDLE` and use `deploy-build`.
+#
+# `DEPLOY_DEST` must be a NEW directory outside the live checkout (the builder
+# refuses to overlay the live checkout, an existing path, or any destination
+# inside the checkout). There is NO default destination: an empty DEPLOY_DEST
+# makes both targets fail the preflight with a copyable example instead of
+# silently building into the repo. Set it explicitly on every invocation.
+DEPLOY_BUNDLE ?= .local-reference/deploy/annex-verified.zip
+ifndef DEPLOY_DEST
+DEPLOY_DEST :=
+endif
+deploy-build:
+	@test -n "$$(command -v $(PY))" || { echo "error: $(PY) not found"; exit 2; }
+	@if [ -z "$(DEPLOY_DEST)" ]; then \
+	  echo "error: DEPLOY_DEST is required and must be a NEW directory OUTSIDE the"; \
+	  echo "       checkout. Example: make deploy-build DEPLOY_DEST=/tmp/eu-release-kit"; \
+	  exit 2; \
+	fi
+	@if [ -f "$(DEPLOY_BUNDLE)" ]; then \
+	  echo "error: $(DEPLOY_BUNDLE) already exists; it will not be overwritten."; \
+	  echo "       Use 'make deploy-build-consume-existing' (or set a fresh DEPLOY_BUNDLE)."; \
+	  exit 2; \
+	fi
+	$(PY) data/scripts/snapshot.py export --root . --output "$(DEPLOY_BUNDLE)"
+	$(PY) deploy/build_deployment.py --snapshot-bundle "$(DEPLOY_BUNDLE)" --dest "$(DEPLOY_DEST)"
+
+deploy-build-consume-existing:
+	@test -n "$$(command -v $(PY))" || { echo "error: $(PY) not found"; exit 2; }
+	@if [ -z "$(DEPLOY_DEST)" ]; then \
+	  echo "error: DEPLOY_DEST is required and must be a NEW directory OUTSIDE the"; \
+	  echo "       checkout. Example: make deploy-build-consume-existing DEPLOY_BUNDLE=/tmp/t.zip DEPLOY_DEST=/tmp/eu-release-kit"; \
+	  exit 2; \
+	fi
+	@test -f "$(DEPLOY_BUNDLE)" || { echo "error: existing bundle not found: $(DEPLOY_BUNDLE)"; exit 2; }
+	$(PY) deploy/build_deployment.py --snapshot-bundle "$(DEPLOY_BUNDLE)" --dest "$(DEPLOY_DEST)"
 
 # --- Testing -----------------------------------------------------------
 test:
@@ -52,7 +101,7 @@ print('wrote openapi.yaml')"
 # failed check into a passing "not installed" echo: it distinguishes a missing
 # tool (hard error, tells the developer to install it) from actual findings
 # (exit non-zero, diagnostics preserved) and returns failure on either.
-QUALITY_LINT_PATHS = packages/eu-reg-lists/eu_reg_lists packages/eu-ingredient-linter/eu_ingredient_linter packages/eu-reg-api/eu_reg_api packages/scan-to-check/scan_to_check eu_lint.py app.py data/scripts examples/acceptance_demo.py tools/quality_gate.py
+QUALITY_LINT_PATHS = packages/eu-reg-lists/eu_reg_lists packages/eu-ingredient-linter/eu_ingredient_linter packages/eu-reg-api/eu_reg_api packages/scan-to-check/scan_to_check eu_lint.py app.py data/scripts examples/acceptance_demo.py tools/quality_gate.py deploy/build_deployment.py
 
 lint:
 	@test -n "$$(command -v $(PY))" || { echo "error: $(PY) not found"; exit 2; }
@@ -69,8 +118,14 @@ coverage:
 # full test suite, named-core coverage, scoped lint and mypy type checks.
 # Each stage reports its status; any required failure makes the command fail.
 # Missing tools are hard errors, never successful skips.
+# Set QUALITY_OUT to a run-owned dir so CI can upload the exact evidence path.
 quality:
-	$(PY) tools/quality_gate.py check
+	@test -n "$$(command -v $(PY))" || { echo "error: $(PY) not found"; exit 2; }
+	@if [ -n "$${QUALITY_OUT:-}" ]; then \
+	  $(PY) tools/quality_gate.py check --out "$${QUALITY_OUT}"; \
+	else \
+	  $(PY) tools/quality_gate.py check; \
+	fi
 
 # --- Build -------------------------------------------------------------
 build:

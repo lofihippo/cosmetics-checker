@@ -16,10 +16,14 @@
   // the browser). They are NOT a duplicate evaluator — the API stays authoritative.
   var UNITS = ["%"];
   var BASES = ["ready_for_use", "after_mixing"];
+  // Product types accepted by the bounded Annex III evaluator plus the two
+  // explicit REACH Annex XVII entry 70 cosmetic branches (wash-off / other
+  // cosmetic). The editor sends canonical values; the API stays authoritative.
   var PRODUCTS = [
     "rust_inhibitor", "hair_product", "nail_product",
     "antidandruff_shampoo", "lash_brow_colour", "oral_product",
-    "artificial_nail_system"
+    "artificial_nail_system",
+    "wash-off", "leave-on", "other_cosmetic"
   ];
 
   // ---- request lifecycle ----
@@ -71,7 +75,7 @@
     $("snap-" + id).textContent = value == null || value === "" ? "Not provided" : String(value);
   }
   function markHealthUnavailable(msg) {
-    ["version", "dt", "substances", "available", "missing"].forEach(function (k) {
+    ["version", "dt", "substances", "available", "missing", "not-included", "annex17"].forEach(function (k) {
       setText(k, "Unavailable");
     });
     snapshotStatus.className = "status-banner err";
@@ -89,9 +93,24 @@
       ? h.coverage.available.join(", ") : "None";
     $("snap-missing").textContent = h.coverage.missing.length
       ? h.coverage.missing.join(", ") : "None";
+    $("snap-not-included").textContent =
+      (h.coverage.not_included && h.coverage.not_included.length)
+        ? h.coverage.not_included.join(", ") : "None";
+    // Name the source-bound REACH Annex XVII entry 70 coverage (entry + the
+    // supported cosmetic branches) explicitly — never "full Annex XVII" and
+    // never ECHA.
+    var a17 = (h.coverage.annex17_entries || []);
+    var a17b = (h.coverage.annex17_branches || []);
+    $("snap-annex17").textContent = a17.length
+      ? ("entry " + a17.join(", ") + " cosmetic branches: "
+         + (a17b.length ? a17b.join(", ") : "n/a"))
+      : "None";
     snapshotStatus.className = "status-banner ok";
     snapshotStatus.textContent =
-      "Ready. Coverage: available lists above; missing lists are gaps, not clean results.";
+      "Ready. Coverage: available lists above; missing lists are gaps and "
+      "excluded lists are deliberately out of scope — all not clean results. "
+      "REACH Annex XVII is covered only for entry 70 D4/D5/D6 cosmetic branches; "
+      "it is not full Annex XVII or REACH coverage.";
   }
   function loadHealth() {
     snapshotStatus.className = "status-banner";
@@ -143,7 +162,7 @@
     // (not the browser) decides what is required. It is never assumed.
     return { ingredient: "", percent: "", unit: "", basis: "",
              product_type: "", body_area: "", professional_use: null,
-             ready_for_use: null };
+             ready_for_use: null, assessment_date: "" };
   }
   function rowToForm(rowEl) {
     return {
@@ -154,7 +173,8 @@
       product_type: rowEl.querySelector(".f-product").value || null,
       body_area: rowEl.querySelector(".f-body-area").value.trim() || null,
       professional_use: triToForm(rowEl.querySelector(".f-professional").value),
-      ready_for_use: triToForm(rowEl.querySelector(".f-ready").value)
+      ready_for_use: triToForm(rowEl.querySelector(".f-ready").value),
+      assessment_date: rowEl.querySelector(".f-assessment-date").value.trim() || null
     };
   }
   function setRowValues(rowEl, values) {
@@ -166,6 +186,7 @@
     rowEl.querySelector(".f-body-area").value = values.body_area || "";
     rowEl.querySelector(".f-professional").value = triToSelect(values.professional_use);
     rowEl.querySelector(".f-ready").value = triToSelect(values.ready_for_use);
+    rowEl.querySelector(".f-assessment-date").value = values.assessment_date || "";
   }
 
   function addIngredientRow(values) {
@@ -212,6 +233,7 @@
     ctx.appendChild(ctxCheck("Body area", "f-body-area", "text"));
     ctx.appendChild(boolSelect("Professional use", "f-professional"));
     ctx.appendChild(boolTri("Ready-for-use", "f-ready"));
+    ctx.appendChild(ctxCheck("Assessment date (YYYY-MM-DD)", "f-assessment-date", "text"));
 
     setRowValues(row, values);
 
@@ -282,7 +304,8 @@
       // with a clear, row-specific error rather than silently dropping it.
       if (!f.ingredient) {
         var supplied = f.percent !== "" || f.unit || f.basis || f.product_type ||
-          f.body_area || f.professional_use !== null || f.ready_for_use !== null;
+          f.body_area || f.professional_use !== null || f.ready_for_use !== null ||
+          f.assessment_date;
         if (!supplied) continue;      // fully blank row -> ignored
         throw new Error("Row " + rowNum + ": ingredient name/identifier is missing " +
           "but other fields are supplied. Complete the row or clear it.");
@@ -302,6 +325,7 @@
       if (f.body_area) entry.body_area = f.body_area;
       if (f.professional_use !== null) entry.professional_use = f.professional_use;
       if (f.ready_for_use !== null) entry.ready_for_use = f.ready_for_use;
+      if (f.assessment_date) entry.assessment_date = f.assessment_date;
       rows.push(entry);
     }
     if (rows.length === 0) {
@@ -363,13 +387,19 @@
       case "requires_context": return "Requires more context (missing/unsupported unit, basis, or product context).";
       case "requires_manual_review": return "Requires manual review (complex rule, cross-annex exception, or unresolved applicability).";
       case "unknown_ingredient": return "Ingredient not found in the snapshot — regulatory status unknown.";
+      case "entry70_supported_trigger": return "REACH Annex XVII entry 70 supported trigger (restriction identified; not a compliance certificate).";
+      case "entry70_within_threshold": return "REACH Annex XVII entry 70: within numeric threshold (comparison only — not clean/compliant).";
+      case "entry70_missing_context": return "REACH Annex XVII entry 70: restriction identified, context required.";
+      case "entry70_transition": return "REACH Annex XVII entry 70: before the branch effective date (not yet applicable).";
+      case "entry70_unsupported": return "REACH Annex XVII entry 70: use not a supported cosmetic branch (not evaluated).";
       default: return v || "Unknown";
     }
   }
   function badgeClass(v) {
-    if (v === "exceeds_supported_limit") return "unevaluated";
-    if (v === "within_supported_numeric_limit") return "clean";
-    if (v === "requires_context") return "unknown";
+    if (v === "exceeds_supported_limit" || v === "entry70_supported_trigger") return "unevaluated";
+    if (v === "within_supported_numeric_limit" || v === "entry70_within_threshold") return "clean";
+    if (v === "requires_context" || v === "entry70_missing_context"
+        || v === "entry70_transition" || v === "entry70_unsupported") return "unknown";
     if (v === "requires_manual_review") return "unknown";
     return "notfound";
   }
@@ -388,7 +418,16 @@
     if (data.coverage) {
       el("p", null, summaryEl).textContent =
         "Coverage available: " + (data.coverage.available.length ? data.coverage.available.join(", ") : "None") +
-        ". Missing (coverage gaps, not clean): " + (data.coverage.missing.length ? data.coverage.missing.join(", ") : "None") + ".";
+        ". Missing (coverage gaps, not clean): " + (data.coverage.missing.length ? data.coverage.missing.join(", ") : "None") +
+        ". Not included (deliberately deferred): " + (data.coverage.not_included && data.coverage.not_included.length ? data.coverage.not_included.join(", ") : "None") + ".";
+      var a17 = (data.coverage.annex17_entries || []);
+      var a17b = (data.coverage.annex17_branches || []);
+      if (a17.length) {
+        el("p", null, summaryEl).textContent =
+          "REACH Annex XVII (entry 70) covered: entry " + a17.join(", ") +
+          " cosmetic branches: " + (a17b.length ? a17b.join(", ") : "n/a") +
+          ". Not full Annex XVII or REACH coverage.";
+      }
     }
     (data.evaluations || []).forEach(function (e) {
       resultsList.appendChild(renderCard(e));
@@ -406,20 +445,43 @@
     verdictLine.className = "note";
 
     var body = el("div", "eval-block", card);
-    var rows = [
+    // Identity/context fields are always relevant regardless of source.
+    var identityRows = [
       ["Resolution / identity", (e.resolved_name || "unresolved") + " (" + (e.resolution || "?") + ")"],
       ["In dataset", e.is_in_dataset ? "Yes" : "No"],
       ["Determination", e.determination || "unknown"],
-      ["Rule status", e.rule_status || "Not provided"],
-      ["Annex", e.annex || "Not provided"],
-      ["Applicability", e.applicable_context || "Not assessed"],
       ["Submitted value", e.submitted_value != null ? e.submitted_value : "Not supplied"],
       ["Unit / basis", (e.unit || "Not supplied") + " / " + (e.basis || "Not supplied")],
-      ["Cap", e.cap || "Not applicable"],
-      ["Numeric comparison", e.numeric_comparison || "Not evaluated"],
-      ["Prohibition classification", e.prohibition_finding || "Not determined"],
+      ["Applicability", e.applicable_context],
     ];
-    body.appendChild(dlFrom(rows, null));
+    body.appendChild(dlFrom(identityRows, null));
+
+    // CosIng-only source-rule evaluation. These rows are rendered ONLY when a
+    // CosIng source rule was actually identified (a CosIng rule is present in
+    // rules/linked_rules or the per-rule status/annex fields are populated).
+    // When the assessment is the REACH entry 70 finding (e.g. a D4/D5/D6
+    // identity with no CosIng rule), the generic "Numeric comparison: Not
+    // evaluated" / "Prohibition classification: Not determined" rows are NOT
+    // shown — they would mis-describe the populated entry-70 assessment. The
+    // entry-70 block below carries its own source-specific comparison/citation.
+    var hasCosing = !!(e.rules || []).length || !!(e.linked_rules || []).length ||
+      !!e.rule_status || !!e.annex;
+    var cosingRows = [
+      ["Rule status", e.rule_status],
+      ["Annex", e.annex],
+      ["Cap", e.cap],
+      // A CosIng rule was identified: the numeric comparison is genuinely
+      // "not evaluated" when the required context is missing (never a clean
+      // claim). This row is NOT rendered for an entry-70-only finding (the
+      // entry-70 block below carries its actual comparison).
+      ["Numeric comparison", e.numeric_comparison || (hasCosing ? "Not evaluated" : null)],
+      ["Prohibition classification", e.prohibition_finding],
+    ].filter(function (r) { return r[1] != null && r[1] !== ""; });
+    if (hasCosing && cosingRows.length) {
+      var ch = el("h4", "source-heading", body);
+      ch.textContent = "CosIng source-rule assessment";
+      body.appendChild(dlFrom(cosingRows, null));
+    }
 
     // Unresolved requirements / warnings, shown prominently.
     if ((e.unresolved_requirements && e.unresolved_requirements.length) ||
@@ -456,19 +518,90 @@
         + "not the member\u2019s own verified rule.";
     }
 
-    // Provenance (machine evidence): source reference, row, scope/exception.
+    // Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence, rendered as a
+    // distinct source-specific block. It is separate evidence and never replaces
+    // the CosIng findings above. The loaded-snapshot timestamp and the actual
+    // entry-70 comparison (threshold/operator/branch/effective date) plus the
+    // regulation and source URL are shown here, labelled as REACH entry 70.
+    var e70 = e.entry70;
+    if (e70) {
+      var e70Title = el("h4", "source-heading", body);
+      e70Title.textContent = "REACH Annex XVII entry 70 assessment";
+      var e70b = el("div", "finding entry70", body);
+      var dh = el("dl", null, e70b);
+      var s = e70.source || {};
+      // Readable labels for machine states/branches without changing the value
+      // (the authoritative value is still available as evidence).
+      function stateLabel(st) {
+        return ({ "applicable_exceeds": "applicable (exceeds threshold)",
+                  "applicable_within": "applicable (within threshold)",
+                  "transition_not_effective": "before branch effective date",
+                  "missing_context": "context required",
+                  "unsupported_use": "unsupported cosmetic use",
+                  "not_entry70_substance": "not an entry 70 substance",
+                  "source_not_active": "entry 70 source not active" }[st] || st);
+      }
+      function branchLabel(b) {
+        return ({ "washoff_cosmetic": "wash-off cosmetic",
+                  "other_cosmetic": "other (non-wash-off) cosmetic" }[b] || b);
+      }
+      [["REACH entry 70 substance", e70.substance_short],
+       ["State", stateLabel(e70.state)],
+       ["Reason", e70.reason],
+       ["Market threshold", e70.threshold],
+       ["Operator", e70.operator],
+       ["Branch", branchLabel(e70.branch)],
+       ["Effective date", e70.effective_date],
+       ["Assessment date", e70.assessment_date],
+       ["Submitted concentration", e70.submitted_percent],
+       ["Submitted product type", e70.product_type],
+       ["Concentration basis", e70.basis],
+       ["Ready for use", e70.ready_for_use],
+       ["Regulation", s.regulation],
+       ["CELEX", s.celex],
+       ["Document SHA-256", s.document_sha256],
+       ["Source URL", null],
+       ["data_updated_at", e70.data_updated_at]
+      ].forEach(function (entry) {
+        var dt = el("dt", null, dh); dt.textContent = entry[0];
+        var dd = el("dd", null, dh);
+        if (entry[0] === "Source URL") {
+          if (isHttpUrl(s.source_url)) dd.appendChild(safeLink(s.source_url));
+          else dd.textContent = "Not provided";
+        } else if (entry[1] == null || entry[1] === "") {
+          dd.textContent = "Not provided";
+        } else {
+          dd.textContent = String(entry[1]);
+        }
+      });
+      (e70.unresolved_requirements || []).forEach(function (u) {
+        var un = el("li", "note", e70b); un.textContent = "Entry 70 unresolved: " + u;
+      });
+    }
+
+    // CosIng provenance (machine evidence): source reference, row, scope/exception.
+    // Rendered only for a CosIng source-rule assessment — never as empty generic
+    // rows that would mis-describe an entry-70-only finding. The entry-70 block
+    // above carries its own regulation/source URL/loaded-snapshot timestamp.
     var prov = e.provenance || {};
-    var precision = [
-      ["Official reference", prov.official_reference],
-      ["File-row reference", prov.row_reference],
-      ["Source file", prov.source_file],
-      ["Source SHA-256", (prov.source_sha256 || "").slice(0, 16) + (prov.source_sha256 ? "…" : "")],
-      ["retrieved_at", prov.retrieved_at],
-      ["source_updated_at", prov.source_updated_at],
-      ["data_updated_at", prov.data_updated_at],
-      ["regulation", prov.regulation],
-    ];
-    body.appendChild(dlFrom(precision, null));
+    var hasProv = ["official_reference", "row_reference", "source_file",
+                   "source_sha256", "retrieved_at", "source_updated_at",
+                   "data_updated_at", "regulation"].some(function (k) {
+                     return prov[k] != null && prov[k] !== "";
+                   });
+    if ((e.rules || []).length || (e.linked_rules || []).length || hasProv) {
+      var precision = [
+        ["Official reference", prov.official_reference],
+        ["File-row reference", prov.row_reference],
+        ["Source file", prov.source_file],
+        ["Source SHA-256", (prov.source_sha256 || "").slice(0, 16) + (prov.source_sha256 ? "…" : "")],
+        ["retrieved_at", prov.retrieved_at],
+        ["source_updated_at", prov.source_updated_at],
+        ["data_updated_at", prov.data_updated_at],
+        ["regulation", prov.regulation],
+      ];
+      body.appendChild(dlFrom(precision, null));
+    }
     return card;
   }
 
@@ -519,6 +652,11 @@
     ],
     "unknown": [
       { ingredient: "TotallyFakeIngredientX", percent: "1", unit: "%" }
+    ],
+    "entry70-washoff": [
+      { ingredient: "Cyclopentasiloxane", percent: "0.5", unit: "%",
+        basis: "ready_for_use", product_type: "wash-off",
+        assessment_date: "2028-01-01" }
     ]
   };
   document.querySelectorAll(".example-btn").forEach(function (btn) {

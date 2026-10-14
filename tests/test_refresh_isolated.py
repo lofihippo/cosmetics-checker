@@ -30,11 +30,13 @@ import sys
 
 import pytest
 
+import fixtures
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "data" / "scripts" / "refresh_isolated.py"
 SNAP = ROOT / "data" / "scripts" / "snapshot.py"
 CANDIDATE = "candidate"
-PY = str((ROOT / ".venv" / "bin" / "python")) if (ROOT / ".venv" / "bin" / "python").exists() else "python3"
+PY = sys.executable
 
 
 def _env():
@@ -62,17 +64,30 @@ def _sqlite_ts(tree: Path) -> str:
 
 @pytest.fixture(scope="module")
 def baseline_bundle(tmp_path_factory):
-    """Export the real accepted repo snapshot to a disposable bundle."""
+    """Export a deterministic SYNTHETIC snapshot bundle to a disposable bundle.
+    The refresh pipeline runs against a run-owned synthetic baseline (never the
+    gitignored production snapshot or raw exports)."""
+    tree = fixtures.build_tree(tmp_path_factory.mktemp("snap"))
+    # Expose the synthetic raw export dir so helper fixtures copy from it.
+    _RAW_DIR = tree / "data" / "raw"
+    globals()["_SYNTH_RAW_DIR"] = _RAW_DIR
     out = tmp_path_factory.mktemp("baseline") / "snapshot-bundle.zip"
-    subprocess.run([PY, str(SNAP), "export", "--root", str(ROOT),
-                    "--output", str(out)],
-                   check=True, capture_output=True, text=True, env=_env())
+    fixtures.build_bundle(tree, out)
     yield out, _sha256(out)
 
 
+def _synth_raw(source: str) -> Path:
+    """Return the synthetic raw export directory for ``source`` (cosing-annex-ii
+    or cosing-annex-iii)."""
+    raw = globals().get("_SYNTH_RAW_DIR")
+    if raw is None:
+        raise RuntimeError("synthetic raw dir not built; run baseline_bundle first")
+    return raw / source
+
+
 def _make_annex_ii_fixture(tmp_path: Path, add_row: bool) -> Path:
-    """Copy the real Annex II export and (optionally) append a clearly marked row."""
-    src = ROOT / "data" / "raw" / "cosing-annex-ii" / "COSING_Annex_II_v2.txt"
+    """Copy the synthetic Annex II export and (optionally) append a marked row."""
+    src = _synth_raw("cosing-annex-ii") / "COSING_Annex_II_v2.txt"
     dst = tmp_path / "COSING_Annex_II_v2.txt"
     shutil.copy2(src, dst)
     if add_row:
@@ -85,16 +100,16 @@ def _make_annex_ii_fixture(tmp_path: Path, add_row: bool) -> Path:
 def _make_wrong_annex_fixture(tmp_path: Path) -> Path:
     """Annex II content staged under an Annex III key triggers the expected
     source-validation fallback (coverage preserved)."""
-    src = ROOT / "data" / "raw" / "cosing-annex-ii" / "COSING_Annex_II_v2.txt"
+    src = _synth_raw("cosing-annex-ii") / "COSING_Annex_II_v2.txt"
     dst = tmp_path / "wrong_annex_for_iii.txt"
     shutil.copy2(src, dst)
     return dst
 
 
 def _make_annex_iii_fixture(tmp_path: Path, remove_ref: str) -> Path:
-    """Copy the real Annex III export, removing the row whose Reference Number
-    equals ``remove_ref`` (e.g. '45' = Benzyl alcohol), leaving other lists intact."""
-    src = ROOT / "data" / "raw" / "cosing-annex-iii" / "COSING_Annex_III_v2.txt"
+    """Copy the synthetic Annex III export, removing the row whose Reference
+    Number equals ``remove_ref`` (e.g. '45' = Benzyl alcohol)."""
+    src = _synth_raw("cosing-annex-iii") / "COSING_Annex_III_v2.txt"
     dst = tmp_path / "COSING_Annex_III_v2.txt"
     lines = src.read_text().splitlines(keepends=True)
     kept = []
@@ -136,8 +151,8 @@ def test_fresh_restore_then_no_change_preserves_freshness(baseline_bundle, tmp_p
     assert result["selected_snapshot_label"] == "baseline"
     assert result["candidate_content_hash"] == result["baseline_content_hash"]
     # Both the metadata and SQLite timestamps equal the accepted baseline value.
-    assert _meta_timestamp(tree) == "2026-10-10T02:31:39.763031+00:00"
-    assert _sqlite_ts(tree) == "2026-10-10T02:31:39.763031+00:00"
+    assert _meta_timestamp(tree) == fixtures.FIXED_DATA_UPDATED_AT
+    assert _sqlite_ts(tree) == fixtures.FIXED_DATA_UPDATED_AT
     # No distribution bundle / review manifest was produced for no-change.
     assert not (work / "snapshot-bundle.zip").exists()
     assert not (work / "candidate-bundle.zip").exists()
@@ -191,7 +206,7 @@ def test_unavailable_source_preserves_coverage(baseline_bundle, tmp_path):
     accepted = json.loads((tree / "data/raw/fetch_manifest.json").read_text())
     assert accepted["cosing-annex-iii"]["accepted"] is True
     ii_iii = tree / "data/raw/cosing-annex-iii/COSING_Annex_III_v2.txt"
-    assert _sha256(ii_iii) == _sha256(ROOT / "data/raw/cosing-annex-iii/COSING_Annex_III_v2.txt")
+    assert _sha256(ii_iii) == _sha256(_synth_raw("cosing-annex-iii") / "COSING_Annex_III_v2.txt")
 
 
 def test_controlled_changed_export_produces_verified_bundle(baseline_bundle, tmp_path):
@@ -221,8 +236,9 @@ def test_controlled_changed_export_produces_verified_bundle(baseline_bundle, tmp
                             env=_env(), check=False)
     assert verify.returncode == 0, verify.stderr
     rep = json.loads(verify.stdout)
-    assert rep["count_substances"] == 2376
-    assert rep["count_verified_substances"] == 2299
+    # Adding one Annex II row creates one new verified substance.
+    assert rep["count_substances"] == fixtures.BASELINE_SUBSTANCES + 1
+    assert rep["count_verified_substances"] == fixtures.BASELINE_VERIFIED_RULES + 1
     # A review manifest is shipped with the artifact.
     assert (out / "review-manifest.json").exists()
     rv = json.loads((out / "review-manifest.json").read_text())
@@ -246,7 +262,7 @@ def test_mixed_failed_and_changed_source_preserves_failed(baseline_bundle, tmp_p
     assert "cosing-annex-ii" in result["diff"]["per_source"]
     # The failed source's accepted file is unchanged (preserved baseline bytes).
     f = work / "baseline/data/raw/cosing-annex-iii/COSING_Annex_III_v2.txt"
-    assert _sha256(f) == _sha256(ROOT / "data/raw/cosing-annex-iii/COSING_Annex_III_v2.txt")
+    assert _sha256(f) == _sha256(_synth_raw("cosing-annex-iii") / "COSING_Annex_III_v2.txt")
 
 
 def test_lost_rule_with_unchanged_identity_counts_marks_review(baseline_bundle, tmp_path):
@@ -306,11 +322,29 @@ def test_export_failure_leaves_baseline_and_exits_2(baseline_bundle, tmp_path, m
     argv = ["--work", str(work), "--baseline-url", f"file://{baseline}",
             "--baseline-sha256", digest,
             "--source-file", f"cosing-annex-ii={fixture}", "--out", str(out)]
+    # Capture the live-checkout protected files BEFORE the refresh: compare
+    # after-hashes so the assertion proves no data was written (and an
+    # initially-absent gitignored file stays absent), rather than merely that a
+    # tracked artifact exists.
+    protected = [
+        ROOT / "data/raw/fetch_manifest.json",
+        ROOT / "data/processed/metadata.json",
+        ROOT / "data/processed/eu_reg_lists.sqlite",
+        ROOT / "data/processed/eu_reg_lists.jsonl",
+    ]
+    absent = [p for p in protected if not p.exists()]
+    before = {p: (p.read_bytes() if p.exists() else None) for p in protected}
     rc = ri.main(argv)
     assert rc == 2
     assert not (work / "candidate/snapshot-bundle.zip").exists()
     # Live checkout unchanged.
-    assert (ROOT / "data/processed/metadata.json").exists()
+    after = {p: (p.read_bytes() if p.exists() else None) for p in protected}
+    for p in protected:
+        assert after[p] == before[p], f"live checkout changed: {p}"
+    # Any file that was absent beforehand stays absent (never created by a
+    # failed export) — proves no data was written to the live tree.
+    for p in absent:
+        assert not p.exists(), f"absent protected file was created: {p}"
 
 
 def test_build_diff_surfaces_lost_accepted_source(tmp_path):
@@ -476,7 +510,7 @@ def _make_hydroquinone_annex_ii_scope_fixture(tmp_path, changed: bool) -> Path:
     UNMODIFIED fixture is byte-identical to the live source file (the refresh
     compares parsed content, not raw bytes, but a byte-identical unmodified
     fixture guarantees a no-change outcome)."""
-    src = ROOT / "data" / "raw" / "cosing-annex-ii" / "COSING_Annex_II_v2.txt"
+    src = _synth_raw("cosing-annex-ii") / "COSING_Annex_II_v2.txt"
     dst = tmp_path / ("COSING_Annex_II_v2_scope.txt" if changed else "COSING_Annex_II_v2.txt")
     if not changed:
         # Byte-identical copy (no newline normalisation).

@@ -2,11 +2,12 @@
 
 Reads a single structured file that represents ONE formula: one ingredient per
 record, with a required ``ingredient`` column and optional ``percent``,
-``unit``, ``basis``, ``product_type``, ``body_area``, ``professional_use`` and
-``ready_for_use`` columns. The parsed records are turned into the SAME formula
-dict consumed by :func:`eu_ingredient_linter.formula.evaluate_formula`, so
-validation (decimal-safe percentages, three-state booleans, duplicate resolved
-identities) is shared — a second evaluator is never built.
+``unit``, ``basis``, ``product_type``, ``body_area``, ``professional_use``,
+``ready_for_use`` and ``assessment_date`` columns. The parsed records are
+turned into the SAME formula dict consumed by
+:func:`eu_ingredient_linter.formula.evaluate_formula`, so validation
+(decimal-safe percentages, three-state booleans, ISO assessment dates,
+duplicate resolved identities) is shared — a second evaluator is never built.
 
 Schema and conventions (also documented in README):
 
@@ -21,6 +22,9 @@ Schema and conventions (also documented in README):
   * ``professional_use`` / ``ready_for_use`` (optional): explicit booleans. Only
     the documented true/false spellings are accepted; a blank cell is absent;
     any other nonempty text is rejected rather than coerced to true.
+  * ``assessment_date`` (optional): an ISO-8601 assessment date (``YYYY-MM-DD``).
+    A supplied but malformed date is rejected (never silently ignored); a blank
+    cell is absent.
 
 Invalid records are never silently skipped: malformed row shapes, duplicate
 headers, unsupported columns, malformed booleans, and partially completed
@@ -52,6 +56,7 @@ _ALLOWED_COLUMNS = {
     "body_area": "body_area",
     "professional_use": "professional_use",
     "ready_for_use": "ready_for_use",
+    "assessment_date": "assessment_date",
 }
 _REQUIRED_COLUMN = "ingredient"
 

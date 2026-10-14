@@ -1,16 +1,18 @@
 # eu-reg-api — local, read-only EU regulatory substance API (Phase 3)
 
-> Regulatory information, not legal advice. A result is a determination about
-> whether an ingredient is present in the **Annex II** snapshot; it is **not**
-> a safety or compliance certificate. Missing coverage (ECHA lists) is
-> reported explicitly and is never presented as complete coverage.
+Regulatory information, not legal advice.
 
-A local read-only REST API over the existing **Annex II–VI** snapshot. It
-reuses [`eu-reg-lists`](../eu-reg-lists) (search/lookup) and
-[`eu-ingredient-linter`](../eu-ingredient-linter) (`ingredient_report`) — it
-does **not** re-derive matching, tokenization, regulatory classification, or
-reconciliation. It covers **Annex II (prohibited), Annex III (restricted), and
-Annex IV/V/VI (conditional positive lists)**; ECHA remains missing coverage.
+A local read-only API, label playground and formula editor over the loaded
+regulatory snapshot. The accepted local snapshot includes CosIng Annex II–VI
+and the supported cosmetic branches of REACH Annex XVII entry 70. The service
+reuses `eu-reg-lists` and `eu-ingredient-linter`; it does not implement a second
+matching or regulatory engine. Source-gated entry-70 coverage is absent when an
+older snapshot is loaded. ECHA exports remain excluded.
+
+A rule match may require further context, and a numeric result is not a safety
+or complete compliance determination. Inspect `/health` for the loaded snapshot
+and coverage. See the root README and `docs/architecture.md` for current project
+status; later sections retain detailed interface and milestone notes.
 
 ## Install & launch
 
@@ -95,9 +97,10 @@ regenerates it from the live schema).
 
 The lists **covered** in this snapshot are `annex-ii` (prohibited),
 `annex-iii` (restricted), and `annex-iv`, `annex-v`, `annex-vi` (conditional
-positive lists). The remaining sources are **known but unavailable** — they
-return `422 coverage_unavailable`, not an empty list (so missing coverage is
-never mistaken for complete coverage): `svhc`, `annex-xiv`, `annex-xvii`. An
+positive lists). The remaining sources are **known but not included** — they
+return `422 coverage_unavailable`, not an empty list (so absent coverage is
+never mistaken for complete coverage): `svhc`, `annex-xiv`, `annex-xvii` (ECHA,
+deliberately deferred in this release). An
 unrecognized name returns `404 unknown_list`.
 
 ## Response contract
@@ -217,10 +220,10 @@ and library. Verified in tests (`test_check_agrees_with_ingredient_report`).
 
 ## Known limitations
 
-- **Annex II–VI covered; ECHA remains missing.** Annex II (prohibited),
+- **Annex II–VI covered; ECHA not included.** Annex II (prohibited),
   Annex III (restricted) and Annex IV/V/VI (conditional positive lists) are
-  covered; ECHA SVHC/Annex XIV/Annex XVII remain **missing coverage**, never
-  clean. The GitHub Action, additional original Phase-2 formats, and broader
+  covered; ECHA SVHC/Annex XIV/Annex XVII remain **not included / deferred**,
+  never clean. The GitHub Action, additional original Phase-2 formats, and broader
   regulatory coverage remain **backlog** items.
 - **Annex IV/V/VI are conditional positive lists, not a compliance engine.**
   Their presence is evidence of a source-list entry; a substance present only

@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 
 def _beauty_lookup_payload(name="Fixture Cosmetic", brands="Fixture Brand",
                            ingredients="AQUA, ALCOHOL", barcode="3560070791460",
@@ -77,8 +79,55 @@ def _banned_report():
         ],
         "coverage": {"available": ["cosing-annex-ii", "cosing-annex-v"],
                      "missing": ["cosing-annex-iii", "cosing-annex-iv",
-                                 "cosing-annex-vi", "echa-annex-xiv",
-                                 "echa-annex-xvii", "echa-svhc"],
+                                 "cosing-annex-vi"],
+                     "not_included": ["echa-annex-xiv", "echa-annex-xvii",
+                                      "echa-svhc"],
+                     "note": "Only listed sources are covered; missing lists are a coverage gap, NOT a clean result."},
+    }
+
+
+def _scoped_report():
+    """A scoped/exception-qualified Annex II prohibition (Hydroquinone-like)."""
+    return {
+        "verdict": "FLAGGED", "clean": False, "no_ingredients": False,
+        "n_flagged": 1, "n_banned": 0, "n_unverified": 0,
+        "snapshot_data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+        "data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+        "registry_size": 5, "results": [
+            {"ingredient": "hydroquinone", "is_in_dataset": True,
+             "determination": "banned", "status": "banned", "annex": "Annex II",
+             "regulation": "(EC) 2009/1223",
+             "source_url": "https://ec.europa.eu/growth/tools-databases/cosing/",
+             "data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+             "conditions": None, "rules": [{
+                 "status": "banned", "annex": "Annex II",
+                 "regulation": "(EC) 2009/1223",
+                 "source_url": "https://ec.europa.eu/growth/tools-databases/cosing/",
+                 "source_updated_at": None, "conditions": None,
+                 "resolution": "cosing-annex-ii", "effective_date": None,
+                 "raw": {"source_kind": "cosing-annex-ii",
+                         "official_reference": 1339, "reference_number": 1339,
+                         "row_reference": "COSING_Annex_II_v2.txt#1339",
+                         "source_file": "COSING_Annex_II_v2.txt",
+                         "source_sha256": "abc",
+                         "retrieved_at": "2026-01-01T00:00:00+00:00",
+                         "source_row": {
+                             "Chemical name / INN":
+                                 "Hydroquinone with the exception of entry 14"}}}],
+             "cas": "123-31-9", "ec": "204-617-8", "e_number": None, "ci": None,
+             "resolution": "cosing-annex-ii", "cased_name": "Hydroquinone",
+             "evaluation": "scope_unresolved",
+             "evaluation_reason": "Annex II prohibition is scoped/conditional "
+                                  "in the source name; applicability to this "
+                                  "product is unresolved.",
+             "prohibition_finding": "scope_unresolved",
+             "membership": [], "linked_rules": []},
+        ],
+        "coverage": {"available": ["cosing-annex-ii", "cosing-annex-v"],
+                     "missing": ["cosing-annex-iii", "cosing-annex-iv",
+                                 "cosing-annex-vi"],
+                     "not_included": ["echa-annex-xiv", "echa-annex-xvii",
+                                      "echa-svhc"],
                      "note": "Only listed sources are covered; missing lists are a coverage gap, NOT a clean result."},
     }
 
@@ -118,7 +167,8 @@ def _sodium_linked_report():
                          "source_row": {"Chemical name / INN": "Hydroquinone"}}}]},
         ],
         "coverage": {"available": ["cosing-annex-ii", "cosing-annex-v"],
-                     "missing": ["cosing-annex-iii", "echa-svhc"],
+                     "missing": ["cosing-annex-iii"],
+                     "not_included": ["echa-svhc"],
                      "note": "Only listed sources are covered; missing lists are a coverage gap, NOT a clean result."},
     }
 
@@ -144,7 +194,8 @@ def _unknown_report():
              "membership": [], "linked_rules": []},
         ],
         "coverage": {"available": ["cosing-annex-ii"],
-                     "missing": ["cosing-annex-iii", "echa-svhc"],
+                     "missing": ["cosing-annex-iii"],
+                     "not_included": ["echa-svhc"],
                      "note": "Only listed sources are covered; missing lists are a coverage gap, NOT a clean result."},
     }
 
@@ -256,6 +307,100 @@ def test_benzene_then_edit_to_aqua_clears_results(page, server):
     assert page.locator("#results .result-item").count() == 0
     assert page.eval_on_selector("#results-card", "el=>el.hidden") is True
     assert page.eval_on_selector("#check-btn", "el=>el.disabled") is False
+
+
+def test_scoped_prohibition_is_not_presented_as_unconditional_banned(page, server):
+    """A scoped/exception-qualified Annex II prohibition must show a
+    'Prohibition scope unresolved' headline (never an unconditional ban), while
+    the original per-rule 'banned' status stays visible as labelled evidence.
+    The summary must not count it as a definitive ban (n_banned 0)."""
+    _goto(page, server, {"**/api/check": _route_check(page, _scoped_report())})
+    _lookup(page)
+    _check(page, "Hydroquinone")
+    body = page.text_content("#results")
+    assert "Prohibition scope unresolved" in body, body
+    assert "scope_unresolved" in body, body
+    # original per-rule status preserved as evidence
+    assert "banned" in body, body
+    assert "Annex II" in body and "(EC) 2009/1223" in body
+    assert "with the exception of entry 14" in body, body
+    # summary shows the scoped finding is FLAGGED but NOT a definitive ban.
+    assert "0 banned" in body, body
+    assert "1 flagged" in body, body
+
+
+def _entry70_d4_report():
+    """D4 with an independent unambiguous CosIng Annex II prohibition PLUS a
+    source-bound REACH entry 70 (missing_context) finding."""
+    return {
+        "verdict": "FLAGGED", "clean": False, "no_ingredients": False,
+        "n_flagged": 1, "n_banned": 1, "n_unverified": 0,
+        "snapshot_data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+        "data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+        "registry_size": 5, "results": [
+            {"ingredient": "556-67-2", "is_in_dataset": True,
+             "determination": "banned", "status": "banned", "annex": "Annex II",
+             "regulation": "(EC) 2009/1223",
+             "source_url": "https://ec.europa.eu/growth/tools-databases/cosing/",
+             "data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+             "conditions": None, "rules": [{
+                 "status": "banned", "annex": "Annex II",
+                 "regulation": "(EC) 2009/1223",
+                 "source_url": "https://ec.europa.eu/growth/tools-databases/cosing/",
+                 "source_updated_at": None, "conditions": None,
+                 "resolution": "cosing-annex-ii", "effective_date": None,
+                 "raw": {"source_kind": "cosing-annex-ii", "official_reference": 1,
+                         "reference_number": 1, "row_reference": "COSING_Annex_II_v2.txt#1",
+                         "source_file": "COSING_Annex_II_v2.txt",
+                         "source_sha256": "abc",
+                         "retrieved_at": "2026-01-01T00:00:00+00:00"}}],
+             "cas": "556-67-2", "ec": "209-136-7", "e_number": None, "ci": None,
+             "resolution": "cosing-annex-ii", "cased_name": "Octamethylcyclotetrasiloxane; D4",
+             "evaluation": "prohibition_identified",
+             "evaluation_reason": "The substance is prohibited; no concentration evaluation is applicable.",
+             "prohibition_finding": "unambiguous", "membership": [], "linked_rules": [],
+             "entry70": {
+                 "ingredient": "556-67-2", "substance_short": "D4", "supported": True,
+                 "state": "missing_context",
+                 "reason": "Cosmetic product type (wash-off vs other) not supplied; "
+                           "which paragraph-3 cosmetic branch applies is unresolved. Not evaluated.",
+                 "threshold": "0.1 % by weight", "operator": ">=",
+                 "branch": None, "effective_date": None, "assessment_date": None,
+                 "submitted_percent": None, "product_type": None, "basis": None,
+                 "ready_for_use": None,
+                 "source": {"regulation": "(EU) 2024/1328", "annex": "Annex XVII",
+                            "entry": "70", "celex": "32024R1328",
+                            "source_url": "https://www.moew.government.bg/static/media/ups/articles/attachments/OJ_L_202401328_EN_TXT3bb31a3161bcab20b2f3051abd65574c.pdf",
+                            "document_sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966"},
+                 "provenance": {}, "unresolved_requirements": [], "source_kind": "reach-annex-xvii-entry70",
+                 "data_updated_at": "2026-10-08T14:35:34.921319+00:00",
+                 "document_sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966",
+             }},
+        ],
+        "coverage": {"available": ["cosing-annex-ii"],
+                     "missing": [], "not_included": ["echa-annex-xiv", "echa-annex-xvii", "echa-svhc"],
+                     "note": "Only listed sources are covered; missing lists are a coverage gap, NOT a clean result."},
+    }
+
+
+def test_entry70_d4_prohibition_is_prominent_over_context_required(page, server):
+    """D4's independent CosIng Annex II prohibition must be the prominent
+    headline in the scanner, while the REACH entry 70 finding stays separate as
+    context-required. It is NOT a category violation and NOT asserted as applied."""
+    _goto(page, server, {"**/api/check": _route_check(page, _entry70_d4_report())})
+    _lookup(page)
+    _check(page, "556-67-2")
+    body = page.text_content("#results")
+    # Prominent CosIng prohibition headline (not the entry-70 finding).
+    assert "Banned / prohibited by CosIng" in body, body
+    assert "No concentration evaluation is applicable" in body, body
+    # The REACH entry 70 finding is rendered separately and not asserted as a
+    # category violation or as applied/triggered.
+    assert "Annex XVII entry 70" in body, body
+    assert "missing_context" in body, body
+    # The entry-70 finding is not the headline; the CosIng ban is counted.
+    assert "1 banned" in body, body
+    assert "Prohibition scope unresolved" not in body
 
 
 def test_edit_pending_check_reenables_button(page, server):
@@ -474,6 +619,9 @@ def test_manual_label_checks_against_real_api(page, server):
     # No 422 "non_cosmetic_product" surfaced.
     assert "not a cosmetic" not in (page.text_content("#lookup-msg") or "")
     assert page.eval_on_selector("#check-btn", "el=>el.disabled") is False
+    # The scanner's result surface names the deliberately-deferred ECHA lists.
+    assert "not included (deliberately deferred)" in body
+    assert "echa-svhc" in body
 
 
 def test_not_found_lookup_fallback_checks_against_real_api(page, server):

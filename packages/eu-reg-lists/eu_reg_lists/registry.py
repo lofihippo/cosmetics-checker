@@ -45,15 +45,21 @@ class Registry:
         return _load_from_jsonl(jsonl, metadata)
 
     def _build_lookup(self) -> None:
+        # Identity key: prefer the stable id, then the canonical name. Both are
+        # optional on the model; a substance with neither has no usable identity
+        # and maps to the empty string (never used as a real lookup key).
+        def ident(sub: Substance) -> str:
+            return sub.id or sub.name or ""
+
         # Canonical name -> set of substance ids (collision if >1).
-        self._by_id = {s.id or s.name: s for s in self.substances}
+        self._by_id = {ident(s): s for s in self.substances}
         name_owners: Dict[str, Set[str]] = {}
         for sub in self.substances:
             if sub.name:
-                name_owners.setdefault(sub.name.lower(), set()).add(sub.id or sub.name)
+                name_owners.setdefault(sub.name.lower(), set()).add(ident(sub))
         ambiguous_names = {k for k, v in name_owners.items() if len(v) > 1}
 
-        owners = {s.id or s.name: s for s in self.substances}
+        owners = {ident(s): s for s in self.substances}
         alias_owners: Dict[str, Set[str]] = {}
 
         for sub in self.substances:
@@ -64,7 +70,7 @@ class Registry:
             for key in sub.keys():
                 if key == canon:
                     continue
-                alias_owners.setdefault(key, set()).add(sub.id or sub.name)
+                alias_owners.setdefault(key, set()).add(ident(sub))
 
         # Build a map of canonical name -> its owning substance id (to detect
         # an alias colliding with a DIFFERENT substance's canonical name).
@@ -73,7 +79,7 @@ class Registry:
             if sub.name:
                 c = sub.name.lower()
                 if c not in ambiguous_names:
-                    name_owner_of[c] = sub.id or sub.name
+                    name_owner_of[c] = ident(sub)
 
         for key, owner_ids in alias_owners.items():
             if len(owner_ids) > 1:
@@ -88,14 +94,14 @@ class Registry:
         # Index exact identifiers (CAS/EC/E-number/CI) so a token that *is* an
         # identifier resolves directly. A shared identifier (e.g. one CAS used by
         # several substances) is ambiguous -> quarantined (never first-pick).
-        self._id_lookup: Dict[str, Substance] = {}
+        self._id_lookup = {}
         id_owners: Dict[str, Set[str]] = {}
         for sub in self.substances:
             ids = [sub.cas, sub.ec, sub.e_number, sub.ci]
             for i in ids:
                 if not i:
                     continue
-                id_owners.setdefault(str(i).strip().lower(), set()).add(sub.id or sub.name)
+                id_owners.setdefault(str(i).strip().lower(), set()).add(ident(sub))
         for key, id_set in id_owners.items():
             if len(id_set) > 1:
                 self._ambiguous.add(key)
@@ -182,7 +188,7 @@ class Registry:
             keys = list(sub.keys()) + [str(i) for i in ids if i]
             for k in keys:
                 if low in k.lower():
-                    seen[sub.id or sub.name] = sub
+                    seen[sub.id or sub.name or ""] = sub
                     break
         return list(seen.values())[:limit]
 

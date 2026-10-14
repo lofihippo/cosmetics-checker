@@ -22,6 +22,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -29,12 +30,20 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "data" / "scripts"
 SNP_SOURCE = ROOT / "data" / "processed"
 
-_PYTHON_DIR = str((ROOT / ".venv" / "bin").resolve()) if (ROOT / ".venv" / "bin").exists() else "/opt/homebrew/bin"
+# Synthetic fixture snapshot built into a disposable temp directory so the
+# Action regressions run on a clean checkout with no production snapshot.
+import fixtures as _fixtures  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def synthetic_tree(tmp_path_factory):
+    return _fixtures.build_tree(tmp_path_factory.mktemp("snap"))
 
 
 def _env():
+    # Use the ACTIVE interpreter's directory, never a hardcoded venv/Homebrew path.
     e = {**os.environ, "EU_REP_ROOT": str(ROOT)}
-    e["PATH"] = f"{_PYTHON_DIR}:{e.get('PATH', '')}"
+    e["PATH"] = f"{Path(sys.executable).parent}:{e.get('PATH', '')}"
     e["PYTHONPATH"] = str(ROOT / "packages/eu-reg-lists")
     return e
 
@@ -53,7 +62,7 @@ def _has_docker() -> bool:
                           timeout=15).returncode == 0
 
 
-HAS_REAL_SNAPSHOT = (SNP_SOURCE / "eu_reg_lists.sqlite").exists()
+HAS_REAL_SNAPSHOT = (SNP_SOURCE / "eu_reg_lists.sqlite").exists()  # retained for real-data gating
 
 
 def _run_entrypoint(entry, args, report_status, policy, tmp):
@@ -63,24 +72,28 @@ def _run_entrypoint(entry, args, report_status, policy, tmp):
         env={**_env(), "RUN_STATUS_FILE": str(report_status)})
 
 
-def _copy_prepared_tree(dest: Path) -> Path:
+def _copy_prepared_tree(dest: Path, source_tree: Path | None = None) -> Path:
     tree = dest / "tree"
-    shutil.copytree(ROOT / "data", tree / "data")
+    if source_tree is not None:
+        # Copy the source_tree's ``data`` subtree, so its contents (raw,
+        # processed, metadata) land directly under ``tree/data``.
+        shutil.copytree(source_tree / "data", tree / "data")
+    else:
+        shutil.copytree(ROOT / "data", tree / "data")
     shutil.copy2(ROOT / "LICENSE", tree / "LICENSE")
     shutil.copy2(ROOT / "LICENSES.md", tree / "LICENSES.md")
     return tree
 
 
-@pytest.mark.skipif(not HAS_REAL_SNAPSHOT, reason="no processed snapshot in repo")
-def test_verify_tree_accepts_real_snapshot(tmp_path):
+def test_verify_tree_accepts_synthetic_snapshot(synthetic_tree, tmp_path):
     import sys as _sys
     _sys.path.insert(0, str(SCRIPTS))
     import snapshot
-    tree = _copy_prepared_tree(tmp_path)
+    tree = _copy_prepared_tree(tmp_path, synthetic_tree)
     try:
         meta, files = snapshot.validate_tree(tree)
-        assert meta["count_substances"] == 2375
-        assert meta["count_verified_rules"] == 2298
+        assert meta["count_substances"] > 0
+        assert meta["count_verified_rules"] > 0
         assert files
     finally:
         shutil.rmtree(tree, ignore_errors=True)
@@ -111,8 +124,7 @@ def test_directory_snapshot_verification_rejected_by_entrypoint(tmp_path):
     assert not (tmp_path / "report.json").exists()
 
 
-@pytest.mark.skipif(not HAS_REAL_SNAPSHOT, reason="no processed snapshot in repo")
-def test_current_run_required_for_both_policies(tmp_path, monkeypatch):
+def test_current_run_required_for_both_policies(tmp_path, monkeypatch, synthetic_tree):
     """A CLI exit 0/1 WITHOUT a valid new report must fail operationally."""
     entry = ROOT / ".github/actions/eu-ingredient-linter/entrypoint.sh"
     inp = tmp_path / "input.csv"
@@ -127,7 +139,7 @@ def test_current_run_required_for_both_policies(tmp_path, monkeypatch):
     for policy in ("findings", "invalid-input"):
         status = tmp_path / f"status-{policy}.txt"
         res = subprocess.run(
-            ["bash", str(entry), str(inp), "csv", str(ROOT),
+            ["bash", str(entry), str(inp), "csv", str(synthetic_tree),
              str(tmp_path / f"report-{policy}.json"), policy],
             capture_output=True, text=True, timeout=240, env=env)
         assert res.returncode == 2, (policy, res.stderr)
@@ -140,8 +152,7 @@ def test_current_run_required_for_both_policies(tmp_path, monkeypatch):
         assert not (tmp_path / f"report-{policy}.json").exists()
 
 
-@pytest.mark.skipif(not HAS_REAL_SNAPSHOT, reason="no processed snapshot in repo")
-def test_stale_report_not_promoted_after_failed_run(tmp_path):
+def test_stale_report_not_promoted_after_failed_run(tmp_path, synthetic_tree):
     """A prior valid report is not replaced by a failed run at the same path."""
     entry = ROOT / ".github/actions/eu-ingredient-linter/entrypoint.sh"
     good_inp = tmp_path / "good.csv"
@@ -149,7 +160,7 @@ def test_stale_report_not_promoted_after_failed_run(tmp_path):
     final = tmp_path / "report.json"
     status = tmp_path / "status.txt"
     # Produce a valid Aqua report at the final path.
-    res = _run_entrypoint(entry, [str(good_inp), "csv", str(ROOT), str(final),
+    res = _run_entrypoint(entry, [str(good_inp), "csv", str(synthetic_tree), str(final),
                                   "invalid-input"], status, None, tmp_path)
     assert res.returncode == 0
     assert final.exists()
@@ -158,21 +169,20 @@ def test_stale_report_not_promoted_after_failed_run(tmp_path):
     bad_inp = tmp_path / "bad.csv"
     bad_inp.write_text('ingredient,percent\n"Benzene,5\n')
     entry2 = subprocess.run(
-        ["bash", str(entry), str(bad_inp), "csv", str(ROOT), str(final), "findings"],
+        ["bash", str(entry), str(bad_inp), "csv", str(synthetic_tree), str(final), "findings"],
         capture_output=True, text=True, timeout=240, env=_env())
     assert entry2.returncode == 2
     assert hashlib.sha256(final.read_bytes()).hexdigest() == before
 
 
-@pytest.mark.skipif(not HAS_REAL_SNAPSHOT, reason="no processed snapshot in repo")
-def test_invalid_input_exits_2_under_both_policies(tmp_path):
+def test_invalid_input_exits_2_under_both_policies(tmp_path, synthetic_tree):
     """Malformed CSV under findings and invalid-input must both fail (exit 2)."""
     entry = ROOT / ".github/actions/eu-ingredient-linter/entrypoint.sh"
     inp = tmp_path / "bad.csv"
     inp.write_text('ingredient,percent\n"Benzene,5\n')
     for policy in ("findings", "invalid-input"):
         status = tmp_path / f"status-{policy}.txt"
-        res = _run_entrypoint(entry, [str(inp), "csv", str(ROOT),
+        res = _run_entrypoint(entry, [str(inp), "csv", str(synthetic_tree),
                                       str(tmp_path / f"never-{policy}.json"), policy],
                               status, None, tmp_path)
         assert res.returncode == 2, (policy, res.stderr)
@@ -191,20 +201,21 @@ def test_command_injection_in_missing_filename_is_escaped():
         assert not line.startswith("::error file=INJECTED-REVIEW-MARKER")
 
 
-@pytest.mark.skipif(not HAS_REAL_SNAPSHOT, reason="no processed snapshot in repo")
-def test_snapshot_preserved_after_runs():
-    """The repo snapshot must be byte-identical after the entrypoint runs."""
+def test_snapshot_preserved_after_runs(synthetic_tree, tmp_path):
+    """The snapshot tree must be byte-identical after the entrypoint runs."""
+    tree_data = synthetic_tree / "data" / "processed"
     before = {
         p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in SNP_SOURCE.glob("*") if p.is_file()
+        for p in tree_data.glob("*") if p.is_file()
     }
-    inp = Path("/tmp/__preserve_aqua__.csv")
+    inp = tmp_path / "preserve_aqua.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     subprocess.run(["bash", str(ROOT / ".github/actions/eu-ingredient-linter/entrypoint.sh"),
-                    str(inp), "csv", str(ROOT), "/tmp/__preserve_report__.json", "invalid-input"],
+                    str(inp), "csv", str(synthetic_tree), str(tmp_path / "report.json"),
+                    "invalid-input"],
                    capture_output=True, text=True, timeout=240, env=_env())
     after = {
         p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in SNP_SOURCE.glob("*") if p.is_file()
+        for p in tree_data.glob("*") if p.is_file()
     }
     assert before == after

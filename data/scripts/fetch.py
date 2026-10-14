@@ -30,11 +30,20 @@ Official sources configured:
   * ``echa-annex-xiv``— ECHA Authorisation List (Annex XIV) export.
   * ``echa-annex-xvii``— ECHA Restrictions (Annex XVII) export.
 
-On this network ECHA returns HTTP 403 and CosIng structured exports are not
-exposed at a stable documented URL; these are recorded as not-fetched (never
-scraped). The parsers are schema-compatible so when the exports are obtainable
-(e.g. from a permitted network / manual placement in data/raw/), ingestion is
-genuinely end-to-end.
+**ECHA is intentionally DISABLED.** Per the project scope decision, ECHA
+acquisition is deferred: we do not accept ECHA's portal terms, do not obtain or
+ingest ECHA exports, and ECHA sources are `enabled=False`, so a normal
+refresh (``fetch_all`` / the scheduled workflow) never contacts ECHA. ECHA
+coverage is explicitly marked missing / "not included" throughout the API,
+linter and docs — an absent ECHA list is a coverage gap, never a clean result.
+ECHA entries are also excluded from the Phase 0 curated prototype (see
+``build_eu_flags.py``).
+
+On this network CosIng structured exports are not exposed at a stable
+documented URL; these are recorded as not-fetched (never scraped). The parsers
+are schema-compatible so CosIng ingestion is genuinely end-to-end. ECHA
+parsing code remains present (``echa_parser.py``) so coverage/coverage-gap
+semantics are preserved, but it is never reached by a default refresh.
 """
 
 from __future__ import annotations
@@ -46,7 +55,7 @@ import shutil
 import sys
 import urllib.request
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw"
@@ -57,7 +66,7 @@ ATTEMPTS = RAW / "fetch_attempts.json"
 INCOMING = RAW / ".incoming"
 
 # Stable, documented downloadable endpoints (not scraped pages).
-SOURCES: Dict[str, Dict[str, str]] = {
+SOURCES: Dict[str, Dict[str, Any]] = {
     "eurlex-1223": {
         "name": "Regulation (EC) No 1223/2009 (cosmetics legal text)",
         "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/XML/?uri=CELEX:32009R1223",
@@ -69,18 +78,21 @@ SOURCES: Dict[str, Dict[str, str]] = {
         "url": "https://echa.europa.eu/documents/10162/0/ECHA_SVHC_candidate_list.csv",
         "filename": "echa_svhc_candidate_list.csv",
         "kind": "echa-svhc",
+        "enabled": False,
     },
     "echa-annex-xiv": {
         "name": "ECHA Authorisation List (Annex XIV)",
         "url": "https://echa.europa.eu/documents/10162/0/ech_annex_xiv.csv",
         "filename": "echa_annex_xiv.csv",
         "kind": "echa-annex-xiv",
+        "enabled": False,
     },
     "echa-annex-xvii": {
         "name": "ECHA Restrictions (Annex XVII)",
         "url": "https://echa.europa.eu/documents/10162/0/echa_annex_xvii_restrictions.csv",
         "filename": "echa_annex_xvii.csv",
         "kind": "echa-annex-xvii",
+        "enabled": False,
     },
     "cosing-annex-ii": {
         "name": "CosIng Annex II (substances prohibited in cosmetic products)",
@@ -186,6 +198,19 @@ def fetch_source(key: str, out_dir: Path = RAW) -> Dict:
     spec = SOURCES.get(key)
     if spec is None:
         raise KeyError(f"unknown source: {key}")
+    if spec.get("enabled") is False:
+        # Disabled source (e.g. ECHA, deferred): do NOT contact the network.
+        # Record a non-fetch attempt so provenance shows why it is skipped.
+        attempt = {
+            "key": key, "name": spec["name"], "url": spec["url"],
+            "fetched": False, "accepted": False,
+            "error": "DisabledError",
+            "detail": "source disabled (deferred); not contacted",
+            "filename": spec["filename"], "kind": spec["kind"],
+            "retrieved_at": _now_iso(),
+        }
+        _record_attempt(attempt, out_dir)
+        return attempt
     stage_dir = _staging_dest(key, out_dir) / key
     stage_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -303,6 +328,10 @@ def fetch_all(out_dir: Path = RAW, write_manifest: bool = True) -> Dict:
     """
     report: Dict = {}
     for key in SOURCES:
+        if SOURCES[key].get("enabled") is False:
+            # Deferred source (e.g. ECHA): do not contact it on a normal refresh.
+            report[key] = fetch_source(key, out_dir)  # records the skip, no network
+            continue
         report[key] = fetch_source(key, out_dir)
     return report
 

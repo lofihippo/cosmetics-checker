@@ -13,7 +13,7 @@
 | `ec` | TEXT | EC number, or NULL |
 | `e_number` | TEXT | EU food-additive E-number, or NULL |
 | `ci` | TEXT | Colour Index number, or NULL |
-| `determination` | TEXT | `unknown` / `allowed_with_conditions` / `restricted` / `banned` |
+| `determination` | TEXT | `unknown` / `allowed_with_conditions` / `listed` / `restricted` / `banned` |
 | `sources` | TEXT (JSON) | source ids that populated this substance |
 | `member_of` | TEXT (JSON) | list of explicit source-backed group memberships (group_id, official_reference, annex, source_kind, source_file, row_reference, member_name) |
 
@@ -31,8 +31,8 @@ surfaced by the checker as `linked_rules`.
 | Column | Type | Meaning |
 |--------|------|---------|
 | `substance_id` | TEXT | FK -> substances.id |
-| `status` | TEXT | `banned` / `restricted` / `allowed_with_conditions` |
-| `annex` | TEXT | `Annex II`..`VI` / `SVHC` / `Annex XIV` / `Annex XVII` / `Food` |
+| `status` | TEXT | `banned` / `restricted` / `listed` / `allowed_with_conditions` |
+| `annex` | TEXT | `Annex II`..`VI` (populated from CosIng) / `Food` / `SVHC` / `Annex XIV` / `Annex XVII` (reserved; ECHA is **not** populated in this release) |
 | `regulation` | TEXT | human-readable regulation citation |
 | `source_url` | TEXT | URL for the source |
 | `source_updated_at` | TEXT | upstream pub/update date, or NULL if unknown |
@@ -70,6 +70,8 @@ and an honesty `note`.
 | `conditions` | caps / use conditions |
 | `rules` | ALL applicable rules (may be >1) |
 | `resolution` | how the headline rule was derived |
+| `evaluation` | `prohibition_identified` / `restriction_identified` / `scope_unresolved` / `listing_identified` / `unrestricted_identified` / NULL |
+| `prohibition_finding` | `unambiguous` (definitive ban) or `scope_unresolved` (scoped/exception ban, applicability unresolved) / NULL |
 | `membership` | explicit source-backed group memberships of this identity |
 | `linked_rules` | the group's own rules surfaced as *linked* evidence (never merged); a member with only linked rules is still a conditional/restricted finding, never clean |
 

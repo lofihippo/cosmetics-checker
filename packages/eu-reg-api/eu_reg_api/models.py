@@ -62,8 +62,14 @@ class SubstanceResponse(BaseModel):
 class CoverageModel(BaseModel):
     available: List[str] = Field(default_factory=list)
     missing: List[str] = Field(default_factory=list)
+    not_included: List[str] = Field(default_factory=list)
     has_annex_ii: bool
     note: str
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) coverage, named
+    # explicitly so the frontend never presents it as full Annex XVII or ECHA.
+    annex17_entries: List[str] = Field(default_factory=list)
+    annex17_branches: List[str] = Field(default_factory=list)
+    annex17_source: Optional[str] = None
 
 
 class MetadataEnvelope(BaseModel):
@@ -118,12 +124,23 @@ class CheckResultModel(BaseModel):
     cased_name: Optional[str] = None
     evaluation: Optional[str] = None
     evaluation_reason: Optional[str] = None
+    # Classification of a retained Annex II prohibition. ``unambiguous`` means
+    # an unconditional (definitive) prohibition; ``scope_unresolved`` means the
+    # source scope/exception applicability is unresolved (never presented as a
+    # definitive prohibition). Mirrors the shared evaluator.
+    prohibition_finding: Optional[str] = None
     # Explicit source-backed group membership: records the group source entry
     # the ingredient belongs to, plus the group's own rules surfaced as linked
     # evidence. Group membership identifies relevant evidence; it never merges
     # identities or claims every group condition applies.
     membership: List[Dict[str, Any]] = Field(default_factory=list)
     linked_rules: List[RuleModel] = Field(default_factory=list)
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence. None unless
+    # the identity is a D4/D5/D6 substance; when present it is the raw
+    # entry-70 verdict dict. It never replaces a CosIng prohibition and is never
+    # a category violation on its own (a label-only check lacks the
+    # concentration/product-type/assessment-date context).
+    entry70: Optional[Dict[str, Any]] = None
 
 
 class CheckResponse(BaseModel):
@@ -183,6 +200,12 @@ class FormulaIngredientModel(BaseModel):
         None, description="Optional boolean: ready-for-use. A False value is "
                           "contradictory for a ready-for-use rule and leaves "
                           "the numeric comparison unresolved.")
+    assessment_date: Optional[str] = Field(
+        None, description="Optional ISO-8601 assessment date (YYYY-MM-DD). "
+                          "Required for a transition/effective-date boundary; "
+                          "a supplied but invalid date is rejected (never "
+                          "silently ignored). Uses the source-version basis for "
+                          "the assessment date.")
 
 
 class FormulaRequest(BaseModel):
@@ -232,10 +255,13 @@ class FormulaEvaluationModel(BaseModel):
     # "scope_unresolved" mean the scope/exception applicability is unresolved
     # (never treated as a definitive prohibition). Mirrors the shared evaluator.
     prohibition_finding: Optional[str] = None
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence, surfaced as
+    # supplementary evidence and never replacing the CosIng rules.
+    entry70: Optional[Dict[str, Any]] = None
     # The raw submitted context (product_type/body_area/professional_use/
-    # ready_for_use/unit/basis), preserved exactly as supplied. Absent vs false
-    # vs true are distinct, and it is never reconstructed from the rule's
-    # required context.
+    # ready_for_use/unit/basis/assessment_date), preserved exactly as supplied.
+    # Absent vs false vs true are distinct, and it is never reconstructed from
+    # the rule's required context.
     submitted_context: Dict[str, Any] = Field(default_factory=dict)
 
 

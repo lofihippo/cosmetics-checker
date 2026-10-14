@@ -218,3 +218,46 @@ def test_github_output_includes_disclaimer():
     gh = render(r, "github")
     assert "Regulatory information, not legal advice." in gh
     assert "::notice" in gh
+
+
+def test_entry70_only_evidence_is_retained_as_finding():
+    """A record with entry-70-only evidence (no direct/linked CosIng rule) must
+    NOT be described as 'no regulatory rule'; its entry 70 finding is emitted."""
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    d5 = erl.Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[], aliases=["D5"],
+        sources=[])
+    reg = erl.Registry([d5], data_updated_at="2026-10-09T00:00:00+00:00",
+                       verified_sources={
+                           "cosing-annex-ii": {"present": True, "accepted": True},
+                           ENTRY70_SOURCE_KIND: {
+                               "present": True, "accepted": True,
+                               "kind": "reach-legal-act",
+                               "files": {"OJ.pdf": {
+                                   "sha256": ENTRY70_SOURCE["document_sha256"],
+                                   "byte_len": 1}},
+                               "data_updated_at": "2026-01-01",
+                               "retrieved_at": "2026-01-01",
+                               "mapping": {
+                                   "mapping_version": ENTRY70_SOURCE["mapping_version"],
+                                   "document_sha256": ENTRY70_SOURCE["document_sha256"],
+                                   "supported_substances": list(
+                                       ENTRY70_SOURCE["supported_substances"]),
+                                   "supported_branches": list(
+                                       ENTRY70_SOURCE["supported_branches"]),
+                               },
+                           },
+                       },
+                       metadata={})
+    r = evaluate_formula({"ingredients": [
+        {"ingredient": "Cyclopentasiloxane", "percent": "0.5", "unit": "%",
+         "basis": "ready_for_use", "product_type": "wash-off",
+         "assessment_date": "2028-01-01"}]}, reg)
+    gh = render(r, "github")
+    # The entry 70 finding is present, and it is an error (applicable_exceeds).
+    assert "entry70" in gh
+    assert "applicable_exceeds" in gh
+    assert "::error" in gh
+    # It is NOT described as "no regulatory rule".
+    assert "no regulatory rule" not in gh

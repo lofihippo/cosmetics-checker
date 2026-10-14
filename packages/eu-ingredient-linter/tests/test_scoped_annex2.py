@@ -198,6 +198,9 @@ def _own_plus_linked_registry():
     """Registry for a member that has its OWN Annex III rule AND linked group
     evidence (the Salicylic acid shape: own Annex III ref 98 + linked Annex V
     ref 3 concentration condition)."""
+    """Registry for a member that has its OWN Annex III rule AND linked group
+    evidence (the Salicylic acid shape: own Annex III ref 98 + linked Annex V
+    ref 3 concentration condition)."""
     group = erl.Substance(
         id="salicyl-group", name="Salicylic acid and its salts", cas=None,
         determination="allowed_with_conditions",
@@ -286,5 +289,44 @@ def test_surface_conditions_shared_path_aggregates_and_dedups():
     deduped = _dedup(reasons)
     assert sum("0.5% (acid)" in s for s in deduped) == 1
     assert any("Professional use" in s for s in deduped)
+
+
+def test_label_path_scoped_prohibition_not_counted_as_banned():
+    """The ordinary label path must NOT surface a scoped Annex II prohibition
+    (CI 44045 'in hair dye products', Hydroquinone 'with the exception of entry
+    14') as an unconditional-sounding 'banned', while an unambiguous ban
+    (Benzene) still counts as banned."""
+    from eu_ingredient_linter import ingredient_report
+    reg = _scoped_registry()
+    rep = ingredient_report("CI 44045, Benzene", reg)
+    assert rep["verdict"] == "FLAGGED"
+    assert rep["clean"] is False
+    # Only Benzene is an unambiguous prohibition; CI 44045 stays flagged but is
+    # NOT counted as a definitive banned finding.
+    assert rep["n_banned"] == 1, rep["n_banned"]
+    by_ing = {r["ingredient"]: r for r in rep["results"] if r["is_in_dataset"]}
+    ci = by_ing["ci 44045"]
+    assert ci["prohibition_finding"] == "scope_unresolved", ci["prohibition_finding"]
+    assert ci["evaluation"] == "scope_unresolved", ci["evaluation"]
+    assert "unresolved" in (ci["evaluation_reason"] or "").lower()
+    benz = by_ing["benzene"]
+    assert benz["prohibition_finding"] == "unambiguous"
+    assert benz["evaluation"] == "prohibition_identified"
+
+
+def test_label_path_sodium_benzoate_linked_is_not_a_violation():
+    """A conditional positive-list (linked Annex V) rule for Sodium benzoate is
+    presented as a conditional/restriction finding, never a demonstrated
+    violation, and no definitive prohibition is attributed to it."""
+    from eu_ingredient_linter import ingredient_report
+    reg = _member_registry()
+    rep = ingredient_report("Sodium benzoate", reg)
+    assert rep["verdict"] == "FLAGGED"
+    assert rep["n_banned"] == 0
+    r = rep["results"][0]
+    assert r["is_in_dataset"] is True
+    assert r["determination"] == "unknown"
+    assert r["prohibition_finding"] is None
+    assert any(lr["status"] == "allowed_with_conditions" for lr in r["linked_rules"])
 
 

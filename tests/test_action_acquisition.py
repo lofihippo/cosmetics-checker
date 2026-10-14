@@ -19,10 +19,13 @@ from pathlib import Path
 import shutil
 import socketserver
 import subprocess
+import sys
 import threading
 
 import pytest
 import yaml
+
+import fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
 SNP = ROOT / "data" / "processed"
@@ -54,12 +57,11 @@ def _workflow_step_run(name: str) -> str:
 
 @pytest.fixture(scope="module")
 def fixture_bundle_url(tmp_path_factory):
-    """Serve a real verified snapshot bundle over a local HTTP server."""
+    """Serve a deterministic synthetic snapshot bundle over a local HTTP server."""
     bundle = tmp_path_factory.mktemp("bundle") / "snapshot-bundle.zip"
-    subprocess.run([_venv_python(), str(EXPORT), "export", "--root", str(ROOT),
-                    "--output", str(bundle)],
-                   check=True, capture_output=True, text=True,
-                   env={**_base_env(), "PYTHONPATH": str(ROOT / "packages/eu-reg-lists")})
+    tree = tmp_path_factory.mktemp("tree")
+    fixtures.build_tree(tree)
+    fixtures.build_bundle(tree, bundle)
     digest = hashlib.sha256(bundle.read_bytes()).hexdigest()
     # Serve the bundle directory without changing the pytest process cwd (which
     # would break other tests relying on relative paths).
@@ -78,8 +80,8 @@ def fixture_bundle_url(tmp_path_factory):
 
 
 def _venv_python() -> str:
-    b = ROOT / ".venv" / "bin" / "python"
-    return str(b) if b.exists() else "python3"
+    # Use the ACTIVE interpreter, never a hardcoded venv/Homebrew path.
+    return sys.executable
 
 
 def _base_env():
