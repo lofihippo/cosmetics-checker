@@ -126,10 +126,13 @@ def test_coverage_reports_annex2_and_missing_lists():
     cov = build_coverage(reg.verified_sources)
     assert cov.has_annex_ii is True
     assert "cosing-annex-ii" in cov.available
-    # Annex III–VI and ECHA are missing coverage, not a clean result.
+    # Missing (coverage gap, not a clean result): Annex III–VI.
     for k in ("cosing-annex-iii", "cosing-annex-iv", "cosing-annex-v",
-              "cosing-annex-vi", "echa-svhc"):
+              "cosing-annex-vi"):
         assert k in cov.missing
+    # ECHA is deliberately NOT included in this release (deferred).
+    assert "echa-svhc" in cov.not_included
+    assert "echa-svhc" not in cov.missing
 
 
 def test_empty_label_is_no_ingredients_not_clean():
@@ -211,6 +214,48 @@ def test_cli_batch_exit_code_for_flag(monkeypatch, tmp_path):
     assert main(["--registry", "x", "--batch", str(b)]) == 1  # batch has a flag
 
 
+def test_cli_exit_code_for_entry70_applicable_exceeds(monkeypatch, tmp_path):
+    """A supported REACH Annex XVII entry 70 trigger yields a finding exit (1),
+    while a plain parent verdict of ``requires_manual_review`` no longer masks it."""
+    import json
+    from eu_ingredient_linter.__main__ import main
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    d5 = erl.Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[], aliases=["D5"],
+        sources=[])
+    verified = {
+        "cosing-annex-ii": {"present": True, "accepted": True},
+        "echa-svhc": {"present": False, "accepted": False},
+        ENTRY70_SOURCE_KIND: {
+            "present": True, "accepted": True, "kind": "reach-legal-act",
+            "files": {"OJ.pdf": {"sha256": ENTRY70_SOURCE["document_sha256"],
+                                 "byte_len": 1}},
+            "data_updated_at": "2026-01-01", "retrieved_at": "2026-01-01",
+            "mapping": {
+                "mapping_version": ENTRY70_SOURCE["mapping_version"],
+                "document_sha256": ENTRY70_SOURCE["document_sha256"],
+                "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+                "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+            },
+        },
+    }
+    reg = erl.Registry([d5], data_updated_at="2026-01-01",
+                       verified_sources=verified)
+    monkeypatch.setattr("eu_ingredient_linter.__main__._registry_from",
+                        lambda path: reg)
+    f = tmp_path / "formula.json"
+    f.write_text(json.dumps({
+        "ingredients": [{
+            "ingredient": "Cyclopentasiloxane", "percent": "0.5", "unit": "%",
+            "basis": "ready_for_use", "product_type": "wash-off",
+            "assessment_date": "2028-01-01",
+        }],
+    }))
+    rc = main(["--registry", "x", "--formula", str(f), "--format", "json"])
+    assert rc == 1
+
+
 def test_human_report_renders_citation_for_flag(capsys):
     """Human text output must include regulation, source URL and data_updated_at."""
     from eu_ingredient_linter.__main__ import _print_human
@@ -225,6 +270,78 @@ def test_human_report_renders_citation_for_flag(capsys):
     assert "Ref." in out or "ref #" in out or "official_reference" in out
     # The retrieval time must NOT be presented as the snapshot update time.
     assert "updated 2026-10-08T00:07:00" not in out
+
+
+def _activate_entry70_registry(reg):
+    """Attach an accepted, compatible entry 70 source/mapping record."""
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    if not getattr(reg, "verified_sources", None):
+        reg.verified_sources = {}
+    reg.verified_sources[ENTRY70_SOURCE_KIND] = {
+        "present": True, "accepted": True, "kind": "reach-legal-act",
+        "files": {"OJ.pdf": {"sha256": ENTRY70_SOURCE["document_sha256"],
+                             "byte_len": 1}},
+        # Deliberately NO per-source data_updated_at (regression for Part B:
+        # the promoted source record lacks one, so the effective LOADED snapshot
+        # timestamp must flow through instead of yielding null nested stamps).
+        "retrieved_at": "2026-01-01",
+        "mapping": {
+            "mapping_version": ENTRY70_SOURCE["mapping_version"],
+            "document_sha256": ENTRY70_SOURCE["document_sha256"],
+            "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+            "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+        },
+    }
+    return reg
+
+
+def test_label_entry70_missing_context_is_restriction_identified_not_clean():
+    """A label-only D5/D6 identity carrying entry 70 evidence is a restriction
+    finding (context required), not an established violation and never an
+    unverified 'no verified rule' identity."""
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    d5 = erl.Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[], aliases=["D5"],
+        sources=[])
+    d6 = erl.Substance(
+        id="cyclohexasiloxane", name="Cyclohexasiloxane", cas="540-97-6",
+        ec="208-762-8", determination="unknown", rules=[], aliases=["D6"],
+        sources=[])
+    reg = erl.Registry([d5, d6], data_updated_at="2026-10-14T07:32:13+00:00",
+                       verified_sources={
+                           "cosing-annex-ii": {"present": True, "accepted": True},
+                           "echa-svhc": {"present": False, "accepted": False},
+                       })
+    _activate_entry70_registry(reg)
+    rep = ingredient_report("Cyclopentasiloxane, Cyclohexasiloxane", reg)
+    # Restriction identified (entry 70 evidence) -> flagged, but NOT a ban.
+    assert rep["verdict"] == "FLAGGED"
+    assert rep["n_flagged"] == 2
+    assert rep["n_banned"] == 0
+    assert rep["clean"] is False
+    for res in rep["results"]:
+        assert res["entry70"] is not None
+        assert res["entry70"]["state"] == "missing_context"
+        # The effective snapshot timestamp flows through even though the source
+        # record has no per-source data_updated_at (Part B regression).
+        assert res["entry70"]["data_updated_at"] == "2026-10-14T07:32:13+00:00"
+        assert res["entry70"]["provenance"]["data_updated_at"] == \
+            "2026-10-14T07:32:13+00:00"
+
+
+def test_label_entry70_absent_identity_stays_unknown():
+    """A recognised-but-unverified identity with NO entry 70 evidence stays an
+    unknown (never a clean result), and is NOT flown to FLAGGED."""
+    reg = erl.Registry([erl.Substance(
+        id="water", name="Aqua", aliases=["water"], cas="7732-18-5",
+        ec="231-791-2", determination="unknown", rules=[])],
+        data_updated_at="2026-01-01",
+        verified_sources={"cosing-annex-ii": {"present": True, "accepted": True}})
+    rep = ingredient_report("Aqua", reg)
+    assert rep["verdict"] == "NOT-FULLY-VERIFIED"
+    assert rep["n_flagged"] == 0
+    assert rep["results"][0]["entry70"] is None
 
 
 # --- Part 1A: batch input validation & exit codes -------------------------

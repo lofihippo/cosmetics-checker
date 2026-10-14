@@ -62,6 +62,7 @@ CORE_FILES = [
     "data/scripts/echa_parser.py",
     "data/scripts/normalize.py",
     "packages/eu-reg-lists/eu_reg_lists/__init__.py",
+    "packages/eu-reg-lists/eu_reg_lists/annex17_entry70.py",
     "packages/eu-reg-lists/eu_reg_lists/checker.py",
     "packages/eu-reg-lists/eu_reg_lists/models.py",
     "packages/eu-reg-lists/eu_reg_lists/registry.py",
@@ -330,6 +331,32 @@ def _mypy_available() -> bool:
     return proc.returncode == 0
 
 
+def _preflight_tools() -> bool:
+    """Validate that every required stage tool is installed & importable."""
+    ok = True
+    # pytest (test suite).
+    proc = subprocess.run([PY, "-m", "pytest", "--version"], cwd=str(ROOT),
+                          capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        print("error: pytest is not installed; pip install pytest", file=sys.stderr)
+        ok = False
+    # coverage (coverage gate).
+    proc = subprocess.run([PY, "-c", "import coverage"], cwd=str(ROOT),
+                          capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        print("error: coverage is not installed; pip install coverage", file=sys.stderr)
+        ok = False
+    # ruff (lint).
+    if not _ruff_available():
+        print("error: ruff is not installed; pip install ruff", file=sys.stderr)
+        ok = False
+    # mypy (types).
+    if not _mypy_available():
+        print("error: mypy is not installed; pip install mypy", file=sys.stderr)
+        ok = False
+    return ok
+
+
 def run_check(out_dir: Path, target: float) -> int:
     """Run all required quality stages (tests, core coverage, lint, type).
 
@@ -339,7 +366,30 @@ def run_check(out_dir: Path, target: float) -> int:
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     overall = 0
+    # A stable JSON stage manifest is the machine-readable evidence CI uploads;
+    # it preserves each stage's status, exit code and log path even on failure.
+    stages: dict = {}
+
+    # Preflight required tools BEFORE running expensive stages. A missing tool is
+    # an operational hard error never masked as a successful skip.
+    preflight_ok = _preflight_tools()
+    if not preflight_ok:
+        overall = 2
+        (out_dir / "quality-status.json").write_text(
+            json.dumps({"disclaimer": DISCLAIMER, "preflight": "failed",
+                        "overall_exit": 2, "stages": {}}, indent=2),
+            encoding="utf-8")
+        print("\n[check] PREFLIGHT FAILED: a required tool is missing or unimportable. "
+              "No expensive stage was run.", file=sys.stderr)
+        return 2
+
     print("=== QUALITY CHECK (stages: test, coverage, lint, types) ===")
+
+    def stage(name, rc, log_path, ok=True):
+        status = "ok" if rc == 0 and ok else ("fail" if rc != 0 else "fail")
+        if rc == 2:
+            status = "operational-error"
+        stages[name] = {"status": status, "exit": rc, "log": str(log_path)}
 
     # 1) Full test suite.
     test_cmd = [PY, "-m", "pytest", "-q", "-p", "no:cacheprovider",
@@ -347,9 +397,13 @@ def run_check(out_dir: Path, target: float) -> int:
                 "packages/eu-ingredient-linter/tests/",
                 "packages/eu-reg-api/tests/", "packages/scan-to-check/tests/"]
     print("\n--- stage: tests ---")
-    test_proc = subprocess.run(test_cmd, cwd=str(ROOT), check=False)
+    test_log = out_dir / "tests.log"
+    with test_log.open("w", encoding="utf-8") as lf:
+        test_proc = subprocess.run(test_cmd, cwd=str(ROOT), check=False, stdout=lf,
+                                   stderr=subprocess.STDOUT)
     test_rc = test_proc.returncode
     print(f"[check] tests exit {test_rc}")
+    stage("tests", test_rc, test_log)
     if test_rc != 0:
         overall = 1
 
@@ -358,37 +412,57 @@ def run_check(out_dir: Path, target: float) -> int:
     cov_out = out_dir / "coverage.json"
     cov_rc = _run_coverage(cov_out, target, False)
     print(f"[check] coverage exit {cov_rc}")
+    stage("coverage", cov_rc, cov_out)
     if cov_rc != 0:
         overall = 1
 
     # 3) Scoped lint over the maintained source.
     print("\n--- stage: lint ---")
-    lint_rc = _run_lint(False)
+    lint_log = out_dir / "lint.log"
+    lint_rc = _run_lint(False, log_path=lint_log)
     print(f"[check] lint exit {lint_rc}")
+    stage("lint", lint_rc, lint_log)
     if lint_rc != 0:
         overall = 1
 
     # 4) Type check (mypy). Missing mypy is a hard error, not a skip.
     print("\n--- stage: types ---")
-    mypy_rc = _run_mypy()
+    mypy_log = out_dir / "mypy.log"
+    mypy_rc = _run_mypy(log_path=mypy_log)
     print(f"[check] types exit {mypy_rc}")
+    stage("types", mypy_rc, mypy_log)
     if mypy_rc != 0:
         overall = 1
+
+    manifest = {
+        "disclaimer": DISCLAIMER,
+        "stages": stages,
+        "overall_exit": overall,
+        "python": sys.version.split()[0],
+        "interpreter": sys.executable,
+    }
+    (out_dir / "quality-status.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"\n=== QUALITY CHECK summary: tests{test_rc} coverage{cov_rc} "
           f"lint{lint_rc} types{mypy_rc} ===")
     return overall
 
 
-def _run_mypy() -> int:
+def _run_mypy(log_path: Path | None = None) -> int:
     if not _mypy_available():
         print("error: mypy is not installed; pip install mypy", file=sys.stderr)
         return 2
-    proc = subprocess.run([PY, "-m", "mypy"], cwd=str(ROOT), check=False)
+    if log_path is not None:
+        with log_path.open("w", encoding="utf-8") as lf:
+            proc = subprocess.run([PY, "-m", "mypy"], cwd=str(ROOT), check=False,
+                                  stdout=lf, stderr=subprocess.STDOUT)
+    else:
+        proc = subprocess.run([PY, "-m", "mypy"], cwd=str(ROOT), check=False)
     return proc.returncode
 
 
-def _run_lint(full: bool) -> int:
+def _run_lint(full: bool, log_path: Path | None = None) -> int:
     # full -> run over the monorepo; scoped -> the maintained source w/o tests.
     scoped = [
         "packages/eu-reg-lists/eu_reg_lists", "packages/eu-ingredient-linter/eu_ingredient_linter",
@@ -396,14 +470,41 @@ def _run_lint(full: bool) -> int:
         "eu_lint.py", "app.py", "data/scripts", "examples/acceptance_demo.py",
         "tools/quality_gate.py",
     ]
+    # Maintained test tree. A narrow F821 (undefined-name) check runs over these
+    # so a missing import in a test module (e.g. `List`) is caught even though
+    # the scoped source lint excludes tests to avoid a style migration.
+    tests_scope = [
+        "tests", "packages/eu-reg-lists/tests", "packages/scan-to-check/tests",
+        "packages/eu-ingredient-linter/tests", "packages/eu-reg-api/tests",
+    ]
     scope = scoped if not full else [str(ROOT)]
     # ruff must be present.
     if not _ruff_available():
         print("error: ruff is not installed; pip install ruff", file=sys.stderr)
         return 2
     print(f"[lint] running ruff over {'full repo' if full else 'scoped paths'}")
-    proc = subprocess.run([PY, "-m", "ruff", "check", "--select", "E4,E7,E9,F"] + scope,
-                          cwd=str(ROOT), check=False)
+    cmd = [PY, "-m", "ruff", "check", "--select", "E4,E7,E9,F"] + scope
+    if log_path is not None:
+        with log_path.open("w", encoding="utf-8") as lf:
+            proc = subprocess.run(cmd, cwd=str(ROOT), check=False,
+                                  stdout=lf, stderr=subprocess.STDOUT)
+        # Narrow undefined-name check over maintained tests. This is a separate
+        # invocation so a test-only defect (missing import) cannot slip through
+        # the source-only lint.
+        with log_path.open("a", encoding="utf-8") as lf:
+            lf.write("\n[test-lint] running ruff F821 over maintained tests\n")
+            tt_proc = subprocess.run(
+                [PY, "-m", "ruff", "check", "--select", "F821"] + tests_scope,
+                cwd=str(ROOT), check=False, stdout=lf, stderr=subprocess.STDOUT)
+        if tt_proc.returncode != 0:
+            proc = tt_proc
+    else:
+        proc = subprocess.run(cmd, cwd=str(ROOT), check=False)
+        tt_proc = subprocess.run(
+            [PY, "-m", "ruff", "check", "--select", "F821"] + tests_scope,
+            cwd=str(ROOT), check=False)
+        if tt_proc.returncode != 0:
+            proc = tt_proc
     return proc.returncode
 
 

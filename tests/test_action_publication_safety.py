@@ -25,23 +25,30 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 import pytest
 import yaml
+
+import fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
 ACTION = ROOT / ".github/actions/eu-ingredient-linter"
 SNP_SOURCE = ROOT / "data" / "processed"
 HAS_REAL = (SNP_SOURCE / "eu_reg_lists.sqlite").exists()
 
-_PYTHON_DIR = str((ROOT / ".venv" / "bin").resolve()) if (ROOT / ".venv" / "bin").exists() else "/opt/homebrew/bin"
-
 
 def _env():
+    # Use the ACTIVE interpreter's directory, never a hardcoded venv/Homebrew path.
     e = {**os.environ, "EU_REP_ROOT": str(ROOT)}
-    e["PATH"] = f"{_PYTHON_DIR}:{e.get('PATH', '')}"
+    e["PATH"] = f"{Path(sys.executable).parent}:{e.get('PATH', '')}"
     e["PYTHONPATH"] = str(ROOT / "packages/eu-reg-lists")
     return e
+
+
+@pytest.fixture(scope="module")
+def synthetic_tree(tmp_path_factory):
+    return fixtures.build_tree(tmp_path_factory.mktemp("snap"))
 
 
 def _run_entrypoint(args, env=None):
@@ -100,14 +107,13 @@ def test_crlf_input_rejected_before_transport(tmp_path):
     assert not (tmp_path / "report.json").exists()
 
 
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_crlf_report_output_rejected(tmp_path):
+def test_crlf_report_output_rejected(tmp_path, synthetic_tree):
     """A newline in report-output is rejected before any publication."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     status = tmp_path / "status.txt"
     report_path = tmp_path / ("report.json\n::error file=INJECTED.csv")
-    res = _run_entrypoint([str(inp), "csv", str(ROOT), str(report_path), "invalid-input"],
+    res = _run_entrypoint([str(inp), "csv", str(synthetic_tree), str(report_path), "invalid-input"],
                           {"RUN_STATUS_FILE": str(status)})
     assert res.returncode == 2
     assert "carriage return or line feed" in res.stderr
@@ -116,14 +122,13 @@ def test_crlf_report_output_rejected(tmp_path):
 
 
 # --- Destination collision protection --------------------------------------
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_report_output_overlapping_input_rejected(tmp_path):
+def test_report_output_overlapping_input_rejected(tmp_path, synthetic_tree):
     """report-output == input-file must be rejected; the input CSV is preserved."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     before = inp.read_bytes()
     status = tmp_path / "status.txt"
-    res = _run_entrypoint([str(inp), "csv", str(ROOT), str(inp), "invalid-input"],
+    res = _run_entrypoint([str(inp), "csv", str(synthetic_tree), str(inp), "invalid-input"],
                           {"RUN_STATUS_FILE": str(status)})
     assert res.returncode == 2
     assert "overlaps the input file" in res.stderr
@@ -132,19 +137,14 @@ def test_report_output_overlapping_input_rejected(tmp_path):
     assert inp.read_text() == "ingredient,percent\nAqua,100\n"
 
 
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_report_output_overlapping_snapshot_bundle_rejected(tmp_path):
+def test_report_output_overlapping_snapshot_bundle_rejected(tmp_path, synthetic_tree):
     """report-output == snapshot bundle must be rejected; the bundle is preserved."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     status = tmp_path / "status.txt"
-    # Use the repo's data directory as a stand-in snapshot tree via a bundle copy.
+    # Export a deterministic synthetic snapshot bundle to a disposable path.
     bundle = tmp_path / "snapshot.zip"
-    # Export a real snapshot bundle to a disposable path.
-    subprocess.run([_venv_python(), str(ROOT / "data/scripts/snapshot.py"),
-                    "export", "--root", str(ROOT), "--output", str(bundle)],
-                   check=True, capture_output=True, text=True,
-                   env={**os.environ, "PYTHONPATH": str(ROOT / "packages/eu-reg-lists")})
+    fixtures.build_bundle(synthetic_tree, bundle)
     before = bundle.read_bytes()
     res = _run_entrypoint([str(inp), "csv", str(bundle), str(bundle), "invalid-input"],
                           {"RUN_STATUS_FILE": str(status)})
@@ -153,17 +153,14 @@ def test_report_output_overlapping_snapshot_bundle_rejected(tmp_path):
     assert bundle.read_bytes() == before
 
 
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_report_output_overlapping_snapshot_tree_member_rejected(tmp_path):
+def test_report_output_overlapping_snapshot_tree_member_rejected(tmp_path, synthetic_tree):
     """report-output == a file inside a snapshot directory must be rejected."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     status = tmp_path / "status.txt"
-    # Copy the repo snapshot tree into a disposable dir so we can mutate it.
+    # A disposable copy of the synthetic snapshot tree so we can mutate it.
     tree = tmp_path / "snapshot-tree"
-    shutil.copytree(ROOT / "data", tree / "data")
-    for name in ("LICENSE", "LICENSES.md"):
-        shutil.copy2(ROOT / name, tree / name)
+    shutil.copytree(synthetic_tree, tree)
     member = tree / "data/raw/fetch_manifest.json"
     before = member.read_bytes()
     res = _run_entrypoint([str(inp), "csv", str(tree), str(member), "invalid-input"],
@@ -174,15 +171,14 @@ def test_report_output_overlapping_snapshot_tree_member_rejected(tmp_path):
 
 
 # --- Invalid directory destination / atomic promotion ----------------------
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_report_output_existing_directory_rejected(tmp_path):
+def test_report_output_existing_directory_rejected(tmp_path, synthetic_tree):
     """A report destination that is an existing directory is rejected."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     status = tmp_path / "status.txt"
     dest_dir = tmp_path / "report-dir"
     dest_dir.mkdir()
-    res = _run_entrypoint([str(inp), "csv", str(ROOT), str(dest_dir), "invalid-input"],
+    res = _run_entrypoint([str(inp), "csv", str(synthetic_tree), str(dest_dir), "invalid-input"],
                           {"RUN_STATUS_FILE": str(status)})
     assert res.returncode == 2
     assert "directory or non-regular" in res.stderr
@@ -190,14 +186,13 @@ def test_report_output_existing_directory_rejected(tmp_path):
     assert not any(dest_dir.iterdir())
 
 
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot in repo")
-def test_atomic_publication_replace_keeps_prior_destination_on_success(tmp_path):
+def test_atomic_publication_replace_keeps_prior_destination_on_success(tmp_path, synthetic_tree):
     """A successful run replaces the prior destination atomically (same inode dir)."""
     inp = tmp_path / "input.csv"
     inp.write_text("ingredient,percent\nAqua,100\n")
     status = tmp_path / "status.txt"
     final = tmp_path / "report.json"
-    res = _run_entrypoint([str(inp), "csv", str(ROOT), str(final), "invalid-input"],
+    res = _run_entrypoint([str(inp), "csv", str(synthetic_tree), str(final), "invalid-input"],
                           {"RUN_STATUS_FILE": str(status)})
     assert res.returncode == 0
     assert final.exists()
@@ -206,7 +201,7 @@ def test_atomic_publication_replace_keeps_prior_destination_on_success(tmp_path)
     assert not list(tmp_path.glob(".eu-lint-report-*.tmp"))
 
 
-def test_publication_failure_is_operational_exit2(tmp_path):
+def test_publication_failure_is_operational_exit2(tmp_path, synthetic_tree):
     """A failed atom-ic publication exits 2 and leaves report-valid false/absent."""
     if os.geteuid() == 0:
         pytest.skip("read-only dir is not a reliable failure under root")
@@ -225,7 +220,7 @@ def test_publication_failure_is_operational_exit2(tmp_path):
     dest_dir.chmod(0o555)
     os.chmod(dest_dir, 0o555)
     try:
-        res = _run_entrypoint([str(inp), "csv", str(ROOT), str(dest_dir / "report.json"),
+        res = _run_entrypoint([str(inp), "csv", str(synthetic_tree), str(dest_dir / "report.json"),
                                "findings"], {"RUN_STATUS_FILE": str(status)})
     finally:
         os.chmod(dest_dir, 0o755)
@@ -238,5 +233,5 @@ def test_publication_failure_is_operational_exit2(tmp_path):
 
 
 def _venv_python() -> str:
-    b = ROOT / ".venv" / "bin" / "python"
-    return str(b) if b.exists() else "python3"
+    # Use the ACTIVE interpreter, never a hardcoded venv/Homebrew path.
+    return sys.executable

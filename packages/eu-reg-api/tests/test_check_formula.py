@@ -173,6 +173,58 @@ def test_unknown_ingredient():
     assert e["verdict"] == "unknown_ingredient"
 
 
+def test_formula_surfaces_entry70_for_siloxane():
+    """The formula evaluator surfaces a source-bound REACH Annex XVII entry 70
+    finding for a D4 identity, plus the CosIng evidence, independently."""
+    from fastapi.testclient import TestClient
+    d4 = erl.Substance(
+        id="d4", name="Octamethylcyclotetrasiloxane; D4", cas="556-67-2",
+        ec="209-136-7", determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        raw={"source_kind": "cosing-annex-ii",
+                             "official_reference": 1388})],
+        sources=["cosing-annex-ii"])
+    verified = {"cosing-annex-ii": {"present": True, "accepted": True},
+                "echa-svhc": {"present": False, "accepted": False},
+                "reach-annex-xvii-entry70": {
+                    "present": True, "accepted": True,
+                    "files": {"OJ_L_202401328_EN.pdf": {
+                        "sha256": ("2ae8024b749623971c03967ba6b829e8abaa0285"
+                                   "c8fee1b3e459c1a24d730966"),
+                        "byte_len": 488977}},
+                    "data_updated_at": DATA_UPDATED_AT,
+                    "retrieved_at": DATA_UPDATED_AT,
+                    "mapping": {
+                        "mapping_version": 1,
+                        "document_sha256": ("2ae8024b749623971c03967ba6b829e8a"
+                                            "baa0285c8fee1b3e459c1a24d730966"),
+                        "supported_substances": ["D4", "D5", "D6"],
+                        "supported_branches": ["washoff_cosmetic", "other_cosmetic"],
+                    },
+                }}
+    metadata = {"data_updated_at": DATA_UPDATED_AT, "version": "0.2.0",
+                "count_substances": 1, "verified_sources": verified,
+                "snapshot": verified}
+    reg = erl.Registry([d4], data_updated_at=DATA_UPDATED_AT,
+                       verified_sources=verified, metadata=metadata)
+    cli = TestClient(create_app(reg, metadata))
+    r = cli.post("/v1/check-formula", json={"ingredients": [
+        {"ingredient": "556-67-2", "percent": 0.10, "unit": "%",
+         "basis": "ready_for_use", "product_type": "wash-off",
+         "assessment_date": "2028-01-01"}]})
+    assert r.status_code == 200
+    e = r.json()["evaluations"][0]
+    assert e["entry70"] is not None
+    assert e["entry70"]["substance_short"] == "D4"
+    assert e["entry70"]["state"] == "applicable_exceeds"
+    # CosIng evidence preserved independently.
+    assert e["rule_status"] == "banned"
+    assert any(rl["annex"] == "Annex II" for rl in e["rules"])
+
+
 def test_invalid_input_returns_422_structured_error():
     cli = _client()
     r = cli.post("/v1/check-formula", json={"ingredients": [

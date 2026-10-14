@@ -10,12 +10,85 @@ ECHA or any official website (AGENTS.md #4).
 | Source | What it provides | How we get it |
 |--------|------------------|---------------|
 | European Commission **CosIng** | Annex II–VI cosmetic substance lists | official export (`.txt`/`.csv`; annex declared in the file preamble) into `data/raw/cosing-annex*/` |
-| **ECHA SVHC Candidate List** | REACH candidate substances | official package into `data/raw/echa-svhc/` |
-| **ECHA Annex XIV** | Authorisation List | official package into `data/raw/echa-annex-xiv/` |
-| **ECHA Annex XVII** | Restrictions | official package into `data/raw/echa-annex-xvii/` |
+| **ECHA SVHC Candidate List** | REACH candidate substances | **NOT included** (deferred; acquisition disabled) |
+| **ECHA Annex XIV** | Authorisation List | **NOT included** (deferred; acquisition disabled) |
+| **ECHA Annex XVII** | Restrictions | **NOT included** (deferred; acquisition disabled) |
 | **EUR-Lex** Regulation (EC) No 1223/2009 | authoritative regulation text | legal-text XML (`data/raw/eurlex-1223/`) |
+| **EUR-Lex / Publications Office** Commission Regulation (EU) 2024/1328 | REACH Annex XVII **entry 70** (D4/D5/D6) | public official OJ PDF (independent EU act; distinct from ECHA). Implemented as a source-bound evaluator, **not** a snapshot source list. |
 
-If a source cannot be reached (e.g. ECHA returns 403 from some networks), the
+ECHA lists are **deliberately excluded** from this release. We do not accept
+ECHA's portal terms, and no ECHA export is downloaded or ingested. ECHA coverage
+is surfaced as a coverage gap / "not included" — never a clean result.
+
+### Annex XVII entry 70 (bounded)
+
+REACH Annex XVII **entry 70** is implemented as a narrow, source-bound evaluator
+from Commission Regulation (EU) 2024/1328 (CELEX 32024R1328 / ELI
+`http://data.europa.eu/eli/reg/2024/1328/oj`). Only the **cosmetic** branches are
+supported: paragraph 3(a) **wash-off** cosmetics (D4/D5, 0,1 % by weight, from
+31 January 2020) and paragraph 3(b) **other cosmetic products** (0,1 % by weight,
+from 6 June 2027). A matched D4/D5/D6 identity surfaces as an entry-70 finding
+that is **identified-but-unevaluated** on a label-only check (no
+concentration/product-type/assessment date), **never a category violation**.
+Unsupported uses (dry cleaning, devices, medicinal, industrial, paragraph 6
+residue derogations) return `unsupported_use`; missing context stays
+`missing_context`. This is **not** full Annex XVII or REACH coverage, and it
+never replaces the independent CosIng determination.
+
+**Source gating (release contract).** Entry 70 is evaluated and advertised as
+covered **only** when the loaded snapshot carries an accepted, compatible
+source/mapping record under the `reach-annex-xvii-entry70` source kind in
+`verified_sources` (document SHA-256 + mapping version + supported branches must
+match). An empty or historical CosIng-only snapshot therefore neither advertises
+nor evaluates entry 70. The retained official OJ PDF (document SHA-256
+`2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966`) is the
+source; it is an amending act, so the consolidated entry-70 text must be
+re-verified for later amendments/corrigenda before a subsequent refresh
+(recorded as a consolidation-check obligation). ECHA exports remain excluded.
+
+**Source currentness (checked-as-of 2026-10-13).** The entry 70 treatment is
+built from Commission Regulation (EU) 2024/1328 (CELEX `32024R1328`), the
+amending act published in OJ L, 17 May 2024. The checked-as-of scope is the
+verified amending-act text as retained; no later amending act, corrigendum or
+consolidation was itself downloaded and re-verified as part of the retain-today
+check. Official-document relationship review on the checked-as-of date records
+**Italian, German and French corrigenda** for this act as present on EUR-Lex
+(the English text and the retained mapping were not shown to be changed thereby;
+this is recorded as a note, not an assurance). A future-date assessment example
+that uses the verified 3(b) effective date (6 June 2027) is a scenario under the
+verified amending-act text, **not** evidence that no future amendment can occur.
+The supported assessment-date scope is therefore the text of the retained
+amending act; before a subsequent refresh the consolidated entry-70 text must be
+re-verified for any later amending act or corrigendum and the consolidated
+CELEX revision identifier recorded. This check is **not** performed by a
+reminder string; it is the recorded reviewed-documents record above.
+
+
+**Applicability semantics.** The cosmetic product type must be explicit:
+generic/ambiguous text (`cosmetic`, bare `other`) does not establish whether the
+product is washed off and stays unresolved (`missing_context`), rather than
+assumed to be a leave-on/other product. Only explicit `wash-off` / `leave-on` /
+`other_cosmetic` / `non-wash-off` product types drive a branch. D6 is not
+covered by paragraph 3(a) (wash-off, D4/D5 only); a D6 in a cosmetic product
+falls under paragraph 3(b), which this evaluator supports only when the caller
+supplies an explicit non-wash-off product type — the wash-off/D6 case is a
+documented exclusion. Weight basis is percent-by-weight; the threshold operator
+is `>=`; the assessment date (ISO-8601, required for the transition boundary) is
+supplied through the submitted context and is never silently ignored.
+
+**Concentration basis (marketed / finished product).** The paragraph 1 market
+trigger compares the substance "as ... 0,1 % by weight" in the mixture the
+cosmetic product places on the market. A supported comparison therefore requires
+the concentration to be expressed on the **marketed / finished (ready-for-use)**
+basis, percent by weight. A missing or incompatible basis (e.g. `raw_material`,
+or a `ready_for_use=false` flag) does **not** establish the marketed cosmetic
+concentration and stays unresolved (`missing_context`) — it is never silently
+converted or assumed. Only the marketed basis drives a supported numeric
+comparison.
+
+
+If a source cannot be reached (e.g. a CosIng endpoint returns 403 from some
+networks), the
 fetch script records it as **not fetched / rejected**; the pipeline does **not**
 fabricate data or scrape around it. Downloaded content is validated before
 acceptance (`validate_content`): an HTML error page or empty body is rejected,
@@ -162,8 +235,10 @@ this expected error is caught; unrelated programming errors still propagate.
    seed) is stored with `determination: "unknown"` and no rules. It is NOT
    asserted to be "no restriction".
 2. **Verified only from exports.** A substance gains `determination` one of
-   `banned / restricted / allowed_with_conditions` ONLY when a rule is parsed
-   from an official export.
+   `banned / restricted / listed / allowed_with_conditions` ONLY when a rule is
+   parsed from an official export. `listed` denotes REACH Candidate List (SVHC)
+   listing information requiring contextual review — never an automatic
+   cosmetic prohibition or a numeric concentration violation.
 3. **Rules kept, not collapsed.** A substance may carry multiple rules (e.g. a
    cosmetic Annex V rule AND a food rule). All are retained; the strongest is
    the headline.
@@ -223,7 +298,7 @@ compliance determination. The pipeline treats them explicitly:
   strongest headline (e.g. a compound in both Annex II and IV keeps a `banned`
   headline plus the Annex IV conditional rule).
 * `determination` uses the strongest rule across all of a substance's rules:
-  `banned > restricted > allowed_with_conditions > unknown`.
+  `banned > restricted > listed > allowed_with_conditions > unknown`.
 
 This milestone **adds source coverage and evidence** — it is **not** a general
 positive-list compliance engine. The six Annex III numeric mappings are
@@ -244,11 +319,59 @@ known contracts (0–3), so a snapshot is re-verifiable under its own historical
 contract and an unknown version is rejected rather than silently reinterpreted
 (see `docs/snapshot-setup.md`).
 
-## What "not verified" means
+## What "not verified" / "not included" means
 
 A high `count_identity_only` and `count_verified_rules == 0` is the correct,
-honest output when the official cosmetic/REACH exports have not been fetched
+honest output when the official cosmetic exports have not been fetched
 and parsed successfully. It is NOT a defect; it reflects that the curated seed
 (Phase 0) is **recognised-names-only** and must not be promoted to
 authoritative regulatory records without source evidence.
+
+ECHA lists are **deliberately not included** in this release (acquisition
+disabled). Their absence is surfaced in the coverage report as `not_included`
+(distinct from ordinary `missing` coverage gaps) and is **never** treated as a
+clean result.
+
+## Consistent prohibition/restriction interpretation (label path = formula path)
+
+A matched prohibition entry is **not** automatically a demonstrated product
+violation, and a scoped/conditional source entry is **not** an unconditional
+ban. The shared `eu_reg_lists.checker` is the single interpretation engine;
+
+it exposes:
+
+* `CheckResult.evaluation` — `prohibition_identified` (unambiguous ban) /
+  `restriction_identified` / `scope_unresolved` (scoped/exception ban) /
+  `listing_identified` / `unrestricted_identified`.
+* `CheckResult.prohibition_finding` — `unambiguous` (definitive ban) /
+  `scope_unresolved` (source scope/exception applicability unresolved). Added
+  to the label/batch path so it carries the same distinction as the formula
+  evaluator instead of surfacing an unconditional-sounding prohibition.
+
+The scoped/exception phrase list (`ANNEX2_SCOPE_PHRASES`) and the
+`annex2_prohibition_finding` / `banned_rule_is_unambiguous` helpers live ONLY
+in `eu_reg_lists.checker`; the formula evaluator (`eu_ingredient_linter.formula`)
+DELEGATES to them, so the two paths never drift into independent interpretation
+engines. The phrases are a bounded syntactic check of explicit qualifiers in the
+source `Chemical name / INN` — never an interpretation of arbitrary legal text.
+
+Consequences in the ordinary label path:
+
+* An **unambiguous** Annex II ban (e.g. Benzene) is flagged and counted in
+  `n_banned`; the formula evaluator's `prohibition_finding == "unambiguous"`
+  also triggers exit 1.
+* A **scoped / cross-annex** Annex II entry (e.g. hydrolysis of CI 44045
+  "... when used as a substance in hair dye products", or Hydroquinone's
+  "... with the exception of entry 14 in Annex III") is still **flagged** as
+  evidence BUT is not counted as a definitive prohibition (`n_banned` excludes
+  it) and its evaluation is `scope_unresolved`.
+* A **conditional positive-list** rule (e.g. Sodium benzoate's linked Annex V
+  rule) is a conditional/restriction finding, never a demonstrated violation.
+* An **unverified identity** (Aqua, Glycerin) is never presented as dangerous or
+  as unrestricted — it is unresolved.
+
+The full source evidence (per-rule status, official reference, `source_row`
+scope text, conditions, provenance) is preserved separately from the
+user-facing interpretation; a source prohibition is never erased just because
+its applicability is unresolved.
 

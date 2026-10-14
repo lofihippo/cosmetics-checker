@@ -21,8 +21,19 @@ import eu_reg_lists as erl  # noqa: E402
 from eu_reg_lists import Rule, Substance  # noqa: E402
 
 PROCESSED = ROOT / "data" / "processed"
-PROCESSED_SQLITE = PROCESSED / "eu_reg_lists.sqlite"
-PROCESSED_JSONL = PROCESSED / "eu_reg_lists.jsonl"
+
+
+@pytest.fixture(scope="module")
+def synthetic_pipeline(tmp_path_factory):
+    """Run the normalized-pipeline consistency checks against a run-owned,
+    deterministic SYNTHETIC snapshot (never the gitignored production snapshot).
+    This keeps the loader / registry / normalize paths covered on a clean
+    checkout while remaining clearly labelled as synthetic data."""
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT))
+    import fixtures
+    tree = fixtures.build_tree(tmp_path_factory.mktemp("snap"))
+    return tree / "data" / "processed"
 
 
 def _sample_substances():
@@ -167,6 +178,171 @@ class TestChecker:
         r2 = erl.check_token("unknown zz", reg)
         assert r2.data_updated_at == "2022-06-01T00:00:00Z"
 
+    def test_svhc_listed_is_flag_not_restriction_or_ban(self):
+        """SVHC Candidate List membership is listing information (``listed``):
+        it flags the ingredient as evidence requiring review, but is NOT a
+        numeric ``restricted`` determination and NOT a ``banned`` prohibition."""
+        reg = erl.Registry([
+            Substance(
+                id="svhc-a", name="Substance A",
+                cas="100-00-0", ec="200-000-0",
+                determination="listed",
+                rules=[Rule(status="listed", annex="SVHC",
+                            regulation="REACH (EC) 1907/2006 Art 59",
+                            source_url="https://echa/candidate-list",
+                            source_updated_at="2022-01-01",
+                            conditions="Substance of very high concern",
+                            resolution="echa-svhc")],
+            ),
+        ], data_updated_at="2022-06-01T00:00:00Z")
+        r = erl.check_token("substance a", reg)
+        assert r.is_in_dataset is True
+        assert r.status == "listed"
+        assert r.determination == "listed"
+        assert r.evaluation == "listing_identified"
+        # It is flagged (contextual evidence) but is not a prohibition and not a
+        # numeric restriction.
+        summary = erl.check_label("substance a", reg)
+        assert summary["n_flagged"] == 1
+        assert summary["n_banned"] == 0
+        assert summary["clean"] is False
+        assert summary["verdict"] == "FLAGGED"
+        # A listing rule never enters the "banned" set.
+        assert "listing" in r.evaluation_reason.lower()
+
+    def test_scoped_annex2_not_counted_as_banned(self):
+        """A scoped Annex II prohibition is FLAGGED but is NOT counted as a
+        definitive ``banned`` result; an unconditional ban is. This carries the
+        formula-path scope distinction into the ordinary label path."""
+        scoped = Substance(
+            id="ci44045", name="Basic Blue 26 (CI 44045)", ci="CI 44045",
+            cas="2580-56-5", ec="219-943-6", determination="banned",
+            rules=[Rule(
+                status="banned", annex="Annex II",
+                regulation="(EC) 2009/1223",
+                source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                source_updated_at="2022-01-01", resolution="cosing-annex-ii",
+                raw={"source_kind": "cosing-annex-ii",
+                     "official_reference": "1340", "row_reference": "f#1340",
+                     "source_row": {"Chemical name / INN": (
+                         "[4-[[4-Anilino-1-naphthyl]..."
+                         "when used as a substance in hair dye products")}}),
+            ],
+        )
+        benzene = Substance(
+            id="benzene", name="Benzene", cas="71-43-2", ec="200-753-7",
+            determination="banned",
+            rules=[Rule(
+                status="banned", annex="Annex II", regulation="(EC) 2009/1223",
+                source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                source_updated_at="2022-01-01", resolution="cosing-annex-ii",
+                raw={"source_kind": "cosing-annex-ii", "official_reference": "47",
+                     "row_reference": "f#47",
+                     "source_row": {"Chemical name / INN": "Benzene"}}),
+            ],
+        )
+        reg = erl.Registry([scoped, benzene], data_updated_at="2022-06-01T00:00:00Z",
+                           verified_sources={"cosing-annex-ii": {"present": True,
+                                                                 "accepted": True}})
+        r = erl.check_token("ci 44045", reg)
+        assert r.prohibition_finding == "scope_unresolved"
+        assert r.evaluation == "scope_unresolved"
+        summary = erl.check_label("CI 44045, Benzene", reg)
+        assert summary["verdict"] == "FLAGGED"
+        assert summary["clean"] is False
+        # Only Benzene is an unambiguous prohibition.
+        assert summary["n_banned"] == 1
+        # Both still flag.
+        assert summary["n_flagged"] == 2
+
+
+def test_check_token_surfaces_entry70_for_siloxane():
+    """A D4/D5/D6 identity surfaced through the shared checker carries a
+    source-bound REACH Annex XVII entry 70 finding (identified-but-unevaluated
+    on a label-only check), distinct from and never replacing any CosIng rule."""
+    d4 = Substance(
+        id="d4", name="Octamethylcyclotetrasiloxane; D4", cas="556-67-2",
+        ec="209-136-7", determination="banned",
+        rules=[Rule(status="banned", annex="Annex II",
+                    regulation="(EC) 2009/1223",
+                    source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                    source_updated_at="2022-01-01", resolution="cosing-annex-ii",
+                    raw={"source_kind": "cosing-annex-ii",
+                         "official_reference": 1388,
+                         "row_reference": "f#1388"})],
+        sources=["cosing-annex-ii"])
+    d5 = Substance(
+        id="d5", name="Cyclopentasiloxane", cas="541-02-6", ec="208-764-9",
+        determination="unknown", rules=[])
+    from eu_reg_lists.annex17_entry70 import (
+        ENTRY70_SOURCE, ENTRY70_SOURCE_KIND)
+    active = {ENTRY70_SOURCE_KIND: {
+        "present": True, "accepted": True, "kind": "reach-legal-act",
+        "files": {"OJ.pdf": {"sha256": ENTRY70_SOURCE["document_sha256"],
+                             "byte_len": 1}},
+        "data_updated_at": "2022-01-01", "retrieved_at": "2022-01-01",
+        "mapping": {
+            "mapping_version": ENTRY70_SOURCE["mapping_version"],
+            "document_sha256": ENTRY70_SOURCE["document_sha256"],
+            "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+            "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+        },
+    }}
+    reg = erl.Registry([d4, d5], data_updated_at="2022-01-01",
+                       verified_sources=active)
+
+    r4 = erl.check_token("556-67-2", reg, data_updated_at="2022-01-01")
+    assert r4.entry70 is not None
+    assert r4.entry70["substance_short"] == "D4"
+    assert r4.entry70["state"] == "missing_context"   # label-only: unevaluated
+    assert r4.entry70["source"]["celex"] == "32024R1328"
+    # The CosIng determination and rule are preserved independently.
+    assert r4.status == "banned" and r4.annex == "Annex II"
+    assert any(rule.annex == "Annex II" for rule in r4.rules)
+
+    # D5 (unknown determination) also recognises entry 70 as a substance match.
+    r5 = erl.check_token("Cyclopentasiloxane", reg, data_updated_at="2022-01-01")
+    assert r5.entry70 is not None
+    assert r5.entry70["substance_short"] == "D5"
+    assert r5.entry70["state"] == "missing_context"
+
+    # A non-siloxane substance carries no entry70 field.
+    rz = erl.check_token("Benzene", erl.Registry([Substance(
+        id="b", name="Benzene", cas="71-43-2", determination="unknown")],
+        data_updated_at="2022-01-01"))
+    assert rz.entry70 is None
+
+
+def test_annex2_scope_helpers_dict_and_empty():
+    """The shared scope-classification helpers handle both ``Rule`` objects and
+    already-serialised rule dicts, and a banned rule with no source name is
+    treated as unconditional (conservative default)."""
+    from eu_reg_lists.checker import (annex2_prohibition_finding,
+                                      banned_rule_is_unambiguous)
+    # Unconditional ban (no scope phrase) with a dict rule.
+    allowed = banned_rule_is_unambiguous(
+        {"status": "banned", "raw": {"source_row": {"Chemical name / INN": "Benzene"}}})
+    assert allowed is True
+    # Scoped ban with a dict rule -> NOT unconditional.
+    scoped = banned_rule_is_unambiguous(
+        {"status": "banned", "raw": {"source_row": {"Chemical name / INN":
+                                                    "X when used in hair dye products"}}})
+    assert scoped is False
+    # A banned rule with NO source name is treated as unconditional.
+    no_src = banned_rule_is_unambiguous(
+        {"status": "banned", "raw": {"source_row": {}}})
+    assert no_src is True
+    # Non-banned -> not a prohibition finding / not unconditional.
+    assert banned_rule_is_unambiguous(
+        {"status": "restricted", "raw": {"source_row": {"Chemical name / INN": "X"}}}) is False
+    finding, reason = annex2_prohibition_finding(
+        [{"status": "banned", "raw": {"source_row": {"Chemical name / INN":
+                                                     "X when used in hair dye products"}}}])
+    assert finding == "scope_unresolved" and reason
+    finding2, _ = annex2_prohibition_finding(
+        [{"status": "banned", "raw": {"source_row": {"Chemical name / INN": "Benzene"}}}])
+    assert finding2 == "unambiguous"
+
 
 class TestPersistence:
     def test_jsonl_roundtrip(self, tmp_path):
@@ -244,10 +420,12 @@ class TestPersistence:
 
 
 class TestNormalizedPipeline:
-    def test_processed_metadata_consistent(self):
-        assert PROCESSED_SQLITE.exists()
-        assert PROCESSED_JSONL.exists()
-        meta = json.loads((PROCESSED / "metadata.json").read_text())
+    def test_processed_metadata_consistent(self, synthetic_pipeline):
+        sqlite = synthetic_pipeline / "eu_reg_lists.sqlite"
+        jsonl = synthetic_pipeline / "eu_reg_lists.jsonl"
+        assert sqlite.exists()
+        assert jsonl.exists()
+        meta = json.loads((synthetic_pipeline / "metadata.json").read_text())
         assert meta["count_substances"] > 0
         assert meta["count_identity_only"] + meta["count_verified_rules"] == \
             meta["count_substances"]
@@ -255,10 +433,11 @@ class TestNormalizedPipeline:
         assert "reconcile" in meta
         assert "count_quarantined" in meta
 
-    def test_processed_jsonl_consistent_with_metadata(self):
-        subs = [json.loads(l) for l in PROCESSED_JSONL.read_text().splitlines() if l.strip()]
+    def test_processed_jsonl_consistent_with_metadata(self, synthetic_pipeline):
+        jsonl = synthetic_pipeline / "eu_reg_lists.jsonl"
+        subs = [json.loads(l) for l in jsonl.read_text().splitlines() if l.strip()]
         assert len(subs) > 0
-        meta = json.loads((PROCESSED / "metadata.json").read_text())
+        meta = json.loads((synthetic_pipeline / "metadata.json").read_text())
         n_verified = sum(1 for s in subs if s["determination"] != "unknown")
         assert n_verified == meta["count_verified_rules"]
         n_identity = sum(1 for s in subs if s["determination"] == "unknown")
@@ -268,14 +447,15 @@ class TestNormalizedPipeline:
             if s["determination"] == "unknown":
                 assert s["rules"] == []
 
-    def test_processed_sqlite_loadable(self):
-        reg = erl.load(PROCESSED_SQLITE)
-        assert len(reg) == json.loads((PROCESSED / "metadata.json").read_text())["count_substances"]
+    def test_processed_sqlite_loadable(self, synthetic_pipeline):
+        sqlite = synthetic_pipeline / "eu_reg_lists.sqlite"
+        reg = erl.load(sqlite)
+        assert len(reg) == json.loads((synthetic_pipeline / "metadata.json").read_text())["count_substances"]
         hit = reg.search("zinc  pyrithione")
         assert isinstance(hit, list)
 
-    def test_processed_sources_provenance(self):
-        meta = json.loads((PROCESSED / "metadata.json").read_text())["verified_sources"]
+    def test_processed_sources_provenance(self, synthetic_pipeline):
+        meta = json.loads((synthetic_pipeline / "metadata.json").read_text())["verified_sources"]
         for key, info in meta.items():
             assert "kind" in info
             assert "present" in info

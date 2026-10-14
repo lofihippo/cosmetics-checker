@@ -1,0 +1,31 @@
+# Local validation Caddyfile: both origins over loopback HTTPS with a
+# temporary CA, WITHOUT altering machine/device trust.
+#
+# Regulatory information, not legal advice.
+#
+# This file is generated/used by the local TLS validation script. It binds the
+# proxy to the loopback address only and serves certs from a temporary CA so no
+# OS/device trust is changed. The two service ports (8000/8010) stay loopback.
+#
+# Replace api.EXAMPLE / scan.EXAMPLE in a public run with your real domains.
+
+{
+	admin off
+	# Local validation only: bind the public listener to loopback.
+}
+
+api.EXAMPLE {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8000
+	request_body {
+		max_size 64MiB
+	}
+}
+
+scan.EXAMPLE {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8010
+	request_body {
+		max_size 80MiB
+	}
+}

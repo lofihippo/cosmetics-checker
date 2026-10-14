@@ -164,3 +164,106 @@ def test_unknown_content_hash_version_rejected(tree, tmp_path):
     archive = tmp_path / "bad.zip"
     with pytest.raises((ValueError,), match="unsupported"):
         snapshot.export_snapshot(tree, archive)
+
+
+def test_rebuild_preserves_deferred_source_inventory_hash(tree):
+    """Re-normalising a restored tree that omits empty/deferred ECHA directories
+    must reproduce the SAME content hash: the source inventory is driven by the
+    explicit fetch_manifest.json, not by physical directory presence (Part C).
+
+    A bundle omits the three empty deferred ECHA dirs (they hold no files), yet
+    the manifest still records their (unfetched, not-accepted) inventory. Without
+    a manifest-driven inventory the rebuilt ``verified_sources`` would drop them
+    and the content hash would change for no data change.
+    """
+    from normalize import compute_content_hash
+    # Simulate the bundle/restored tree: the manifest records the deferred ECHA
+    # sources (accepted:false, no files) but there is no physical ECHA directory.
+    manifest_path = tree / "data/raw/fetch_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    for key in ("echa-svhc", "echa-annex-xiv", "echa-annex-xvii"):
+        # Add the deferred sources exactly as fetch.py records them (not fetched,
+        # not accepted). They are recorded in the inventory but never ingest data.
+        manifest[key] = {"fetched": False, "accepted": False}
+    manifest_path.write_text(json.dumps(manifest))
+
+    # Baseline: build over the tree (which HAS no physical echa dirs). The
+    # manifest-driven provenance must record all sources and reproduce the hash.
+    raw = tree / "data/raw"
+    meta = build_processed(tree / "data/processed", raw)
+    vs = meta["verified_sources"]
+    for key in ("echa-svhc", "echa-annex-xiv", "echa-annex-xvii"):
+        assert key in vs
+        assert vs[key]["present"] is False
+        assert vs[key]["accepted"] is False
+        assert vs[key]["files"] == {}
+    records = [json.loads(l) for l in
+               (tree / "data/processed/eu_reg_lists.jsonl").read_text().splitlines()
+               if l.strip()]
+    src = {k: v for k, v in vs.items()}
+    h = compute_content_hash(records, src)
+    assert h == meta["content_hash"]
+    # The deferred ECHA sources are preserved in the inventory even though their
+    # directories are absent (bundle restoration), so the inventory is stable.
+    assert all(k in src for k in ("echa-svhc", "echa-annex-xiv", "echa-annex-xvii"))
+
+
+def _write_entry70_source(root):
+    """Write an internally-consistent entry70 raw source (document + mapping)."""
+    from eu_reg_lists.annex17_entry70 import (ENTRY70_DOCUMENT_FILE,
+                                              ENTRY70_MAPPING_FILE,
+                                              ENTRY70_SOURCE,
+                                              ENTRY70_SOURCE_KIND)
+    src = root / "data/raw" / ENTRY70_SOURCE_KIND
+    src.mkdir(parents=True, exist_ok=True)
+    doc = b"synthetic-but-consistent-doc"
+    (src / ENTRY70_DOCUMENT_FILE).write_bytes(doc)
+    doc_sha = hashlib.sha256(doc).hexdigest()
+    mapping = {
+        "mapping_version": ENTRY70_SOURCE["mapping_version"],
+        "document_sha256": doc_sha,
+        "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+        "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+    }
+    (src / ENTRY70_MAPPING_FILE).write_text(json.dumps(mapping, indent=2))
+    manifest = json.loads((root / "data/raw/fetch_manifest.json").read_text())
+    manifest[ENTRY70_SOURCE_KIND] = {
+        "fetched": True, "accepted": True, "filename": ENTRY70_MAPPING_FILE,
+        "sha256": hashlib.sha256((src / ENTRY70_MAPPING_FILE).read_bytes()).hexdigest(),
+        "byte_len": (src / ENTRY70_MAPPING_FILE).stat().st_size,
+        "retrieved_at": "2024-05-18T00:00:00+00:00",
+    }
+    (root / "data/raw/fetch_manifest.json").write_text(json.dumps(manifest, indent=2))
+    return doc_sha
+
+
+def test_normalize_preserves_entry70_mapping_rebuild(tree):
+    """A real raw-to-processed rebuild reconstructs the entry70 mapping contract
+    so the snapshot stays active with a reproducible identity (no manual
+    metadata patching)."""
+    from eu_reg_lists.annex17_entry70 import (ENTRY70_SOURCE, ENTRY70_SOURCE_KIND,
+                                              mapping_content_hash)
+    _write_entry70_source(tree)
+    meta = build_processed(tree / "data/processed", tree / "data/raw")
+    vs = meta["verified_sources"].get(ENTRY70_SOURCE_KIND)
+    assert vs is not None
+    assert vs["source_is_active"] is True
+    assert vs["mapping"]["mapping_version"] == ENTRY70_SOURCE["mapping_version"]
+    assert vs["mapping_content_hash"] == mapping_content_hash(vs["mapping"])
+
+
+def test_validate_tree_rejects_entry70_without_document(tree):
+    """A mapping-only entry70 source (no retained official document) is rejected
+    by the snapshot verifier; it is never accepted as a bound, active source."""
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE_KIND
+    _write_entry70_source(tree)
+    meta = build_processed(tree / "data/processed", tree / "data/raw")
+    # Remove the retained official document bytes + its file inventory record.
+    (tree / "data/raw" / ENTRY70_SOURCE_KIND / "OJ_L_202401328_EN.pdf").unlink()
+    vs = meta["verified_sources"][ENTRY70_SOURCE_KIND]
+    vs["files"].pop("OJ_L_202401328_EN.pdf", None)
+    vs["present"] = bool(vs["files"])
+    (tree / "data/processed/metadata.json").write_text(json.dumps(meta, indent=2))
+    with pytest.raises(ValueError) as exc:
+        snapshot.validate_tree(tree)
+    assert "retained official document" in str(exc.value)

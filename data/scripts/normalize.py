@@ -37,6 +37,15 @@ from typing import Any, Dict, List, Optional, Set
 
 from cosing_parser import AnnexMismatchError
 
+from eu_reg_lists.annex17_entry70 import (
+    ENTRY70_DOCUMENT_FILE,
+    ENTRY70_MAPPING_FILE,
+    ENTRY70_SOURCE,
+    ENTRY70_SOURCE_KIND,
+    MAPPING_SCHEMA_VERSION,
+    mapping_content_hash,
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
@@ -55,12 +64,15 @@ SOURCE_SPECS = {
     "echa-svhc": "https://echa.europa.eu/candidate-list-table",
     "echa-annex-xiv": "https://echa.europa.eu/regulations/reach/authorisation",
     "echa-annex-xvii": "https://echa.europa.eu/regulations/reach/restriction",
+    "reach-annex-xvii-entry70": (
+        "https://eur-lex.europa.eu/eli/reg/2024/1328/oj"
+    ),
 }
 
 
 def _source_url_for(key: str) -> str:
     """Return the canonical citation URL for a source dir key."""
-    return SOURCE_SPECS.get(key, SOURCE_SPECS.get("cosing"))
+    return SOURCE_SPECS.get(key, SOURCE_SPECS["cosing"])
 
 
 def _rule_source_url(key: str, row: Dict[str, Any]) -> str:
@@ -125,7 +137,7 @@ def _iter_sources(raw_dir: Path) -> List[tuple]:
             if not d.is_dir() or d.name == ".incoming":
                 continue
             k = d.name
-            if _kind_from_dir(k) and k not in active:
+            if _kind_from_dir(k) and not _source_is_disabled(k) and k not in active:
                 active[k] = d
                 keys.append(k)
     # staged keys only (not already active)
@@ -135,7 +147,7 @@ def _iter_sources(raw_dir: Path) -> List[tuple]:
             if not d.is_dir():
                 continue
             k = d.name
-            if _kind_from_dir(k) and k not in active:
+            if _kind_from_dir(k) and not _source_is_disabled(k) and k not in active:
                 active[k] = d
                 keys.append(k)
     return [(k, active[k]) for k in sorted(keys)]
@@ -410,7 +422,7 @@ def _new_substance_id(name: str, by_id: Dict[str, Any]) -> str:
 def _retain_standalone(substances: List[Dict[str, Any]],
                        cur_index: Dict[str, Any],
                        by_id: Dict[str, Any],
-                       verification: dict,
+                       verification: "_VerificationIndex",
                        report: ReconcileReport,
                        name: str, cas: Optional[str], ec: Optional[str],
                        row: Dict[str, Any],
@@ -574,12 +586,10 @@ def _load_parser(name: str):
 def _parse_export_file(path: Path, kind: str, source_url: str,
                        key: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse one raw export file into verified-rule records using the right
-    parser for its source kind."""
+    parser for its source kind. ECHA sources are deliberately disabled/deferred
+    (AGENTS.md #9) and are filtered out of source discovery earlier, so only
+    CosIng exports are parsed here."""
     if path.suffix.lower() in (".csv", ".tsv", ".txt"):
-        if kind.startswith("echa-"):
-            echa = _load_parser("echa_parser")
-            sub = kind.replace("echa-", "")  # svhc / annex-xiv / annex-xvii
-            return echa.parse_echa_file(path, sub, source_url)
         if kind == "cosing-annex":
             cos = _load_parser("cosing_parser")
             # The annex (II/III/IV/V/VI) is encoded in the source-dir key
@@ -678,7 +688,7 @@ def _is_group_form_candidate(sub: Dict[str, Any]) -> bool:
 
 def _reconcile(substances: List[Dict[str, Any]],
                cur_index: Dict[str, Any],
-               verification: dict,
+               verification: "_VerificationIndex",
                by_id: Optional[Dict[str, Any]] = None) -> ReconcileReport:
     """Merge verified rules from exports into the curated identity list.
 
@@ -1125,7 +1135,7 @@ def _rule(row: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-_STRONGEST = {"unknown": 0, "allowed_with_conditions": 1, "restricted": 2, "banned": 3}
+_STRONGEST = {"unknown": 0, "allowed_with_conditions": 1, "listed": 2, "restricted": 3, "banned": 4}
 
 
 def _glossary_alias(row: Dict[str, Any]) -> Optional[str]:
@@ -1271,6 +1281,24 @@ def build_processed(output_dir: Optional[Path] = None,
     return metadata
 
 
+def _source_is_disabled(key: str) -> bool:
+    """Return True if a source kind is deliberately disabled/deferred (AGENTS.md #9).
+
+    ECHA sources are disabled in the fetch configuration, so a normal refresh
+    never contacts ECHA and never ingests ECHA-derived data into the release
+    snapshot. This mirrors the fetch ``enabled: false`` flag and filters those
+    sources out of source discovery entirely (deterministic, no import side
+    effects).
+    """
+    return key in _DEFERRED_SOURCE_KINDS
+
+
+# ECHA sources are deferred (AGENTS.md #9); kept in sync with fetch.py's
+# ``enabled: false`` flags. They must never be ingested into the release
+# snapshot.
+_DEFERRED_SOURCE_KINDS = {"echa-svhc", "echa-annex-xiv", "echa-annex-xvii"}
+
+
 def _kind_from_dir(key: str) -> Optional[str]:
     if key.startswith("cosing-annex"):
         return "cosing-annex"
@@ -1280,6 +1308,12 @@ def _kind_from_dir(key: str) -> Optional[str]:
         return "echa-annex-xiv"
     if key in ("echa-annex-xvii",):
         return "echa-annex-xvii"
+    if key in ("reach-annex-xvii-entry70",):
+        # Source-bound REACH Annex XVII entry 70 mapping (the official EU legal
+        # act / OJ amending act). It is a supplementary evaluator source, NOT an
+        # ECHA export and NOT parsed into per-substance rules here; it is
+        # recorded for provenance/release gating.
+        return "reach-legal-act"
     if key in ("eurlex-1223", "eurlex-1333"):
         # legal-text XML; recorded for provenance but not parsed into rules.
         return "legal-text"
@@ -1295,6 +1329,33 @@ def _manifest_entry(key: str, manifest_path: Optional[Path] = None) -> Optional[
         return doc.get(key)
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def _manifest_doc(manifest_path: Path) -> Optional[Dict[str, Any]]:
+    """Return the raw fetch-manifest dict, or None when absent/unreadable."""
+    if not manifest_path.exists():
+        return None
+    try:
+        doc = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return doc if isinstance(doc, dict) else None
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _manifest_kind(key: str, manifest: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Return the source kind for ``key`` from its manifest entry if present,
+    else derive it from the canonical SOURCE_SPECS / *-dir convention.
+
+    Used when a source is recorded in the fetch manifest but its physical
+    directory is absent in this raw tree (e.g. a never-fetched deferred ECHA
+    source in a restored bundle). Falling back to ``_kind_from_dir`` keeps the
+    inventory deterministic for any registered source.
+    """
+    entry = (manifest or {}).get(key) or {}
+    kind = entry.get("kind") if isinstance(entry, dict) else None
+    if kind:
+        return kind
+    return _kind_from_dir(key)
 
 
 def _sha256(data: bytes) -> str:
@@ -1335,6 +1396,22 @@ def compute_content_hash(substances: List[Dict[str, Any]],
     facts = []
     for s in sorted(substances, key=lambda x: (x.get("name") or "", x.get("cas") or "")):
         # exclude only transient timestamps (data_updated_at/retrieved_at).
+        rules_facts = [
+            {"status": r.get("status"), "annex": r.get("annex"),
+             "regulation": r.get("regulation"),
+             "source_url": r.get("source_url"),
+             "conditions": r.get("conditions"),
+             "resolution": r.get("resolution"),
+             "effective_date": r.get("effective_date"),
+             "source_sha256": (r.get("raw") or {}).get("source_sha256"),
+             "row_reference": (r.get("raw") or {}).get("row_reference"),
+             "reference_number": (r.get("raw") or {}).get("reference_number"),
+             "accepted": (r.get("raw") or {}).get("accepted"),
+             "source_row": (r.get("raw") or {}).get("source_row"),
+             "conditions_list": (r.get("raw") or {}).get("conditions_list")}
+            for r in sorted(s.get("rules", []),
+                            key=lambda r: (r.get("annex") or "", r.get("status") or ""))
+        ]
         fact = {
             "id": s.get("id"),
             "name": s.get("name"),
@@ -1345,26 +1422,11 @@ def compute_content_hash(substances: List[Dict[str, Any]],
             "ci": s.get("ci"),
             "determination": s.get("determination"),
             "sources": sorted(s.get("sources") or []),
-            "rules": [
-                {"status": r.get("status"), "annex": r.get("annex"),
-                 "regulation": r.get("regulation"),
-                 "source_url": r.get("source_url"),
-                 "conditions": r.get("conditions"),
-                 "resolution": r.get("resolution"),
-                 "effective_date": r.get("effective_date"),
-                 "source_sha256": (r.get("raw") or {}).get("source_sha256"),
-                 "row_reference": (r.get("raw") or {}).get("row_reference"),
-                 "reference_number": (r.get("raw") or {}).get("reference_number"),
-                 "accepted": (r.get("raw") or {}).get("accepted"),
-                 "source_row": (r.get("raw") or {}).get("source_row"),
-                 "conditions_list": (r.get("raw") or {}).get("conditions_list")}
-                for r in sorted(s.get("rules", []),
-                                key=lambda r: (r.get("annex") or "", r.get("status") or ""))
-            ],
+            "rules": rules_facts,
         }
         # Version 0 (earliest) rules facts omitted source_row + conditions_list.
         if hash_version == "0":
-            for fr in fact["rules"]:
+            for fr in rules_facts:
                 fr.pop("source_row", None)
                 fr.pop("conditions_list", None)
         # Versions 2 and 3 include the group-membership links.
@@ -1377,6 +1439,27 @@ def compute_content_hash(substances: List[Dict[str, Any]],
     src = {k: {f: (v["sha256"] if isinstance(v, dict) else v)
                 for f, v in (info.get("files") or {}).items()}
            for k, info in sorted(sources.items())}
+    # Bind the effective entry 70 mapping contract to the content hash so a
+    # changed mapping (different supported substances/branches/document hash)
+    # yields a DIFFERENT reproducible identity, while the historical snapshot
+    # (no entry 70 mapping) is unchanged. The mapping identity is derived from
+    # the reconstructed mapping content, not from a manually-patched metadata
+    # field that could disagree with the raw mapping file.
+    _binding = {k: info for k, info in sorted(sources.items())}
+    for k, info in _binding.items():
+        eff_mapping = info.get("mapping")
+        if eff_mapping:
+            src[k] = {**src[k],
+                      "mapping": {
+                          "mapping_version": eff_mapping.get("mapping_version"),
+                          "document_sha256": eff_mapping.get("document_sha256"),
+                          "supported_substances": sorted(
+                              eff_mapping.get("supported_substances") or []),
+                          "supported_branches": sorted(
+                              eff_mapping.get("supported_branches") or []),
+                          "document_kind": eff_mapping.get("document_kind"),
+                          "mapping_content_hash": mapping_content_hash(eff_mapping),
+                      }}
     # Version 1 and 2 match their original (unversioned) byte-for-byte contracts
     # so legacy snapshots verify; only version 3 adds the hash-version marker.
     payload = {"substances": facts, "sources": src}
@@ -1387,24 +1470,61 @@ def compute_content_hash(substances: List[Dict[str, Any]],
 
 
 def _source_provenance(raw_dir: Path) -> Dict[str, Any]:
+    """Build the verified_sources inventory, driven by the explicit source
+    inventory in ``fetch_manifest.json`` rather than physical directory presence.
+
+    ``fetch_manifest.json`` records EVERY source the fetch pipeline is aware of
+    (including deliberately-deferred ECHA sources that are ``accepted: false``
+    and carry no files). A source whose directory exists in the raw tree with no
+    retained file (an empty/deferred ECHA dir in a restored bundle) is therefore
+    still recorded with ``files: {}`` and ``present: false``, so re-normalising
+    a restored bundle reproduces the SAME content hash as the live snapshot
+    (the empty-directory/source-inventory dependency is removed). The physical
+    directory is still used to discover retained file hashes for sources that
+    have one; a source present in the manifest but absent on disk (never fetched)
+    is still recorded so its inventory is preserved deterministically.
+
+    ECHA sources remain never-available (``release_policy`` gates coverage and
+    release eligibility); this only preserves their inventory identity for a
+    reproducible bundle, it never ingests or distributes ECHA data.
+    """
     manifest_path = raw_dir / "fetch_manifest.json"
-    report = {}
+    manifest = _manifest_doc(manifest_path)
+    # Source kinds the manifest records. Preserve the manifest order so the
+    # provenance dict is deterministic. A source may be recorded in the manifest
+    # but never fetched; fall back to discovering any physical recognised dirs
+    # that are not in the manifest (e.g. a manually-added candidate dir).
+    report: Dict[str, Any] = {}
+    manifest_keys = list((manifest or {}).keys())
+    # Also include any physical recognised source dirs (in addition to the
+    # manifest inventory) so a candidate raw tree that adds a source is recorded.
     for d in sorted(raw_dir.iterdir()) if raw_dir.exists() else []:
         if not d.is_dir():
             continue
-        kind = _kind_from_dir(d.name)
+        if _kind_from_dir(d.name) and d.name not in manifest_keys:
+            manifest_keys.append(d.name)
+
+    for key in manifest_keys:
+        d = raw_dir / key
+        kind = _kind_from_dir(key) if d.is_dir() else _manifest_kind(key, manifest)
         if kind is None:
-            continue  # not a recognized source export dir
+            continue
         files = {}
-        for f in sorted(d.iterdir()):
-            if f.suffix.lower() not in (".csv", ".tsv", ".txt", ".xml"):
-                continue
-            files[f.name] = {
-                "sha256": _sha256(f.read_bytes()),
-                "byte_len": f.stat().st_size,
-            }
-        manifest_entry = _manifest_entry(d.name, manifest_path)
-        report[d.name] = {
+        # Reach legal-act / entry70 mapping sources carry PDF and JSON mapping
+        # files (not tabular rule exports); include those so a candidate bundle
+        # retains the document bytes and the mapping contract for verification.
+        allowed_suffix = (".pdf", ".json") if kind == "reach-legal-act" else (
+            ".csv", ".tsv", ".txt", ".xml")
+        if d.is_dir():
+            for f in sorted(d.iterdir()):
+                if f.suffix.lower() not in allowed_suffix:
+                    continue
+                files[f.name] = {
+                    "sha256": _sha256(f.read_bytes()),
+                    "byte_len": f.stat().st_size,
+                }
+        manifest_entry = _manifest_entry(key, manifest_path)
+        entry = {
             "kind": kind,
             "files": files,
             "present": bool(files),
@@ -1412,7 +1532,73 @@ def _source_provenance(raw_dir: Path) -> Dict[str, Any]:
             "accepted": bool(manifest_entry and manifest_entry.get("accepted")),
             "retrieval_error": manifest_entry.get("error") if manifest_entry else None,
         }
+        # Reconstruct the entry 70 source/mapping contract from the actual
+        # retained raw bytes (a real raw-to-processed import path), never by
+        # manually patching processed metadata. The mapping is validated against
+        # the retained official document bytes and the module's canonical
+        # mapping contract, and the mapping-content identity is bound.
+        if key == ENTRY70_SOURCE_KIND:
+            mapping = _reconstruct_entry70_mapping(d, entry, manifest_entry)
+            entry["mapping"] = mapping
+            entry["mapping_schema_version"] = MAPPING_SCHEMA_VERSION
+            entry["mapping_content_hash"] = (
+                mapping_content_hash(mapping) if mapping else None)
+            entry["source_is_active"] = _entry70_mapping_active(mapping)
+        report[key] = entry
     return report
+
+
+def _reconstruct_entry70_mapping(src_dir: Path, entry: Dict[str, Any],
+                                 manifest_entry: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Validate the retained entry 70 raw source and return its mapping contract.
+
+    Requires BOTH the retained official document (PDF, verified SHA-256) AND the
+    retained mapping JSON, and that the mapping agrees with the module's
+    canonical contract (document hash + mapping version + supported
+    substances/branches). Returns ``None`` (entry 70 inactive) when either is
+    missing/contradictory, so a candidate that lacks the official PDF or whose
+    mapping disagrees with the raw mapping file is never active.
+    """
+    document = src_dir / ENTRY70_DOCUMENT_FILE
+    mapping_file = src_dir / ENTRY70_MAPPING_FILE
+    if not document.is_file() or not mapping_file.is_file():
+        return None
+    doc_sha = _sha256(document.read_bytes())
+    try:
+        raw = json.loads(mapping_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    # The retained document bytes are bound to the mapping's document hash; a
+    # document whose SHA-256 does not match the raw mapping file is a binding
+    # failure (never active). Whether that hash is the genuine Regulation
+    # 2024/1328 OJ hash is a separate candidate-authenticity property verified
+    # beside the retained bytes.
+    if raw.get("document_sha256") != doc_sha:
+        return None
+    if int(raw.get("mapping_version", -1)) != ENTRY70_SOURCE["mapping_version"]:
+        return None
+    subs = sorted(raw.get("supported_substances") or [])
+    if subs != sorted(ENTRY70_SOURCE["supported_substances"]):
+        return None
+    branches = sorted(raw.get("supported_branches") or [])
+    if branches != sorted(ENTRY70_SOURCE["supported_branches"]):
+        return None
+    # Bind the official document byte hash + locators into the mapping record.
+    return {
+        "mapping_version": ENTRY70_SOURCE["mapping_version"],
+        "document_sha256": ENTRY70_SOURCE["document_sha256"],
+        "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+        "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+        "document_kind": ENTRY70_SOURCE["document_kind"],
+        "locators": dict(ENTRY70_SOURCE["locators"]),
+    }
+
+
+def _entry70_mapping_active(mapping: Optional[Dict[str, Any]]) -> bool:
+    """Return True only when the reconstructed entry 70 mapping is non-None."""
+    return mapping is not None
 
 
 def _write_jsonl(substances: List[Dict[str, Any]], out: Optional[Path] = None) -> None:

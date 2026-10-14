@@ -116,7 +116,8 @@
   }
 
   function markHealthUnavailable(msg) {
-    ["version", "dt", "substances", "verified", "available", "missing"].forEach(function (k) {
+    ["version", "dt", "substances", "verified", "available", "missing",
+     "not-included"].forEach(function (k) {
       $("snap-" + k).textContent = "Unavailable";
     });
     snapshotStatus.className = "status-banner err";
@@ -143,9 +144,24 @@
       ? h.coverage.available.join(", ") : "None";
     $("snap-missing").textContent = h.coverage.missing.length
       ? h.coverage.missing.join(", ") : "None";
+    $("snap-not-included").textContent =
+      (h.coverage.not_included && h.coverage.not_included.length)
+        ? h.coverage.not_included.join(", ") : "None";
+    // Name the source-bound REACH Annex XVII entry 70 coverage (entry + the
+    // supported cosmetic branches) explicitly — never "full Annex XVII" and
+    // never ECHA.
+    var a17 = (h.coverage.annex17_entries || []);
+    var a17b = (h.coverage.annex17_branches || []);
+    $("snap-annex17").textContent = a17.length
+      ? ("entry " + a17.join(", ") + " cosmetic branches: "
+         + (a17b.length ? a17b.join(", ") : "n/a"))
+      : "None";
     snapshotStatus.className = "status-banner ok";
     snapshotStatus.textContent =
-      "Ready. Coverage: available lists above; missing lists are gaps, not clean results.";
+      "Ready. Coverage: available lists above; missing lists are gaps and "
+      "excluded lists are deliberately out of scope — all not clean results. "
+      "REACH Annex XVII is covered only for entry 70 D4/D5/D6 cosmetic branches; "
+      "it is not full Annex XVII or REACH coverage.";
   }
 
   function loadHealth() {
@@ -175,21 +191,30 @@
   // ---- check ----
   function verdictLabel(v, clean) {
     if (clean) return "No EU ban/restriction triggered for every fully verified ingredient (not a safety certificate).";
-    if (v === "FLAGGED") return "At least one banned/restricted/conditional rule was triggered. A conditional allowance (Annex IV/V/VI positive list) is not a clean/green result — its conditions have not been verified as satisfied.";
+    if (v === "FLAGGED") return "At least one banned/restricted/conditional rule, or a retained REACH entry 70 restriction, was identified. A conditional allowance (Annex IV/V/VI positive list) is not a clean/green result; any identified-but-unevaluated restriction requires the missing context before applicability is established.";
     if (v === "NO-INGREDIENTS") return "No ingredient tokens were parsed.";
     return "Not fully verified: one or more ingredients are unknown or unresolved.";
   }
 
   function classify(res) {
-    if (res.status === "banned" || res.status === "restricted" || res.status === "allowed_with_conditions") {
+    if (res.status === "banned" || res.status === "restricted" || res.status === "listed" || res.status === "allowed_with_conditions") {
       return "FLAGGED";
     }
     // A grouped member whose evidence is only a linked group rule is still a
-    // conditional/restricted finding (explicit source-backed membership).
+    // conditional/restricted/listing finding (explicit source-backed membership).
     var linked = res.linked_rules || [];
     if (linked.some(function (lr) {
-      return lr.status === "banned" || lr.status === "restricted" || lr.status === "allowed_with_conditions";
+      return lr.status === "banned" || lr.status === "restricted" || lr.status === "listed" || lr.status === "allowed_with_conditions";
     })) {
+      return "FLAGGED";
+    }
+    // A retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6) finding is a
+    // restriction finding (identified-but-unevaluated on a label-only check).
+    // It is never a category violation and never an unverified "no verified rule"
+    // identity. Only a PRESENT entry70 verdict with a real state is treated as
+    // evidence; an undefined/absent entry70 (non-D4/D5/D6 identity) is untouched.
+    var e70 = res.entry70;
+    if (e70 && e70.state && e70.state !== "not_entry70_substance" && e70.state !== "source_not_active") {
       return "FLAGGED";
     }
     if (!res.is_in_dataset) return "NOTFOUND";
@@ -204,6 +229,41 @@
 
   function statusLabelFor(res, cls) {
     if (cls === "FLAGGED") {
+      // Derive the user-facing headline from the SHARED assessment fields the
+      // backend already computed (prohibition_finding / evaluation), so a scoped
+      // or exception-qualified prohibition is never presented as an
+      // unconditional "banned". The original per-rule status ("banned") remains
+      // in the labelled evidence rows below; this only changes the headline.
+      var finding = res.prohibition_finding || null;
+      var evalState = res.evaluation || null;
+      // An independent, source-bound CosIng determination takes headline
+      // priority over the supplementary REACH entry 70 finding, so a definitive
+      // CosIng prohibition is prominent while the entry 70 context-required
+      // evidence stays separate (see the entry70 block in the card body). A
+      // scoped/exception-qualified prohibition is still never an unconditional
+      // "banned".
+      if (finding === "unambiguous" || evalState === "prohibition_identified") {
+        return "banned";
+      }
+      if (finding === "scope_unresolved") {
+        if (res.status === "banned") return "Prohibition scope unresolved";
+        return "Exception requires review";
+      }
+      if (evalState === "listing_identified") {
+        return "Listing identified (contextual review)";
+      }
+      if (evalState === "restriction_identified") {
+        return "Restriction identified (context required)";
+      }
+      // Otherwise a retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6)
+      // finding is a restriction finding (identified-but-unevaluated on a
+      // label-only check), never a category violation and never an unverified
+      // "no verified rule". It is only treated as evidence when present with a
+      // real state.
+      var e70 = res.entry70;
+      if (e70 && e70.state && e70.state !== "not_entry70_substance" && e70.state !== "source_not_active") {
+        return "REACH entry 70 restriction identified (context required)";
+      }
       var st = res.status || res.determination || "flag";
       if (st === "allowed_with_conditions") return "allowed with conditions (not clean)";
       return st.replace(/_/g, " ");
@@ -318,7 +378,49 @@
     var body = el("div", null, card);
     var bodyMsg;
     if (cls === "FLAGGED") {
-      bodyMsg = (res.determination || "flag") + " (status " + (res.status || "unknown") + ")";
+      // Keep the original per-rule status in the evidence, but make the
+      // prominent body statement match the interpreted headline derived from
+      // the shared assessment (never an unconditional "banned" for a scoped /
+      // exception-qualified prohibition). An independent, source-bound CosIng
+      // determination takes priority over the supplementary REACH entry 70
+      // finding, which is rendered separately below.
+      var finding = res.prohibition_finding || null;
+      var evalState = res.evaluation || null;
+      if (finding === "unambiguous" || evalState === "prohibition_identified") {
+        bodyMsg = "Banned/prohibited by CosIng (Annex II). No concentration "
+          + "evaluation is applicable. The separate REACH entry 70 finding is "
+          + "shown below as context-required (never a category violation).";
+      } else if (finding === "scope_unresolved") {
+        bodyMsg = (res.status === "banned"
+                   ? "Prohibition scope unresolved. "
+                   : "Exception requires review. ")
+          + "Matched rule status \u201c" + (res.status || "unknown")
+          + "\u201d is preserved as evidence; applicability to this product is "
+          + "not evaluated.";
+      } else if (evalState === "restriction_identified") {
+        bodyMsg = "Restriction identified but not evaluated: no product "
+          + "concentration/context was supplied, so no threshold violation has "
+          + "been established (status \u201c" + (res.status || "unknown") + "\u201d).";
+      } else if (evalState === "listing_identified") {
+        bodyMsg = "Listing identified (status \u201c" + (res.status || "unknown")
+          + "\u201d); contextual regulatory review required.";
+      } else {
+        // A retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6) finding
+        // is a restriction finding (identified-but-unevaluated on a label-only
+        // check). State that a restriction was identified and that applicability
+        // requires the missing product/concentration/date context — never that
+        // it "applies" or "was triggered".
+        var e70 = res.entry70;
+        if (e70 && e70.state && e70.state !== "not_entry70_substance" && e70.state !== "source_not_active") {
+          bodyMsg = "REACH Annex XVII entry 70 restriction identified (context "
+            + "required). No supported restriction trigger is asserted: "
+            + "applicability requires the missing product "
+            + "concentration/product-type/date context, so no threshold "
+            + "violation has been established.";
+        } else {
+          bodyMsg = (res.determination || "flag") + " (status " + (res.status || "unknown") + ")";
+        }
+      }
     } else if (cls === "NOTFOUND") {
       bodyMsg = "No matching record was found in this snapshot. Regulatory status is unknown.";
     } else {
@@ -330,6 +432,34 @@
     var rules = res.rules || [];
     var linked = res.linked_rules || [];
     var memberships = res.membership || [];
+    // Source-bound REACH Annex XVII entry 70 (D4/D5/D6): surface the
+    // identified-but-unevaluated restriction (label-only check), clearly
+    // separate from the CosIng findings. Never a category violation by itself.
+    if (res.entry70) {
+      var r70 = res.entry70;
+      var note = el("div", "finding entry70", findings);
+      var d70 = el("dl", null, note);
+      var rows70 = [
+        ["Annex XVII entry 70", r70.substance_short ? ("Substance " + r70.substance_short + " (D4/D5/D6)") : "—"],
+        ["State", r70.state || "Not provided"],
+        ["Reason", r70.reason || "Not provided"],
+        ["Market threshold", r70.threshold || "Not provided"],
+        ["Applicable branch", r70.branch || "Not provided"],
+        ["Effective date", r70.effective_date || "Not provided"],
+        ["Regulation", (r70.source && r70.source.regulation) || "Not provided"],
+        ["Source URL", r70.source && r70.source.source_url ? "link" : "Not provided"],
+        ["data_updated_at", res.data_updated_at],
+      ];
+      rows70.forEach(function (r) {
+        el("dt", null, d70).textContent = r[0];
+        var ddrow = el("dd", null, d70);
+        if (r[0] === "Source URL" && isHttpUrl(r70.source && r70.source.source_url)) {
+          ddrow.appendChild(safeLink(r70.source.source_url));
+        } else {
+          ddrow.textContent = r[1];
+        }
+      });
+    }
     memberships.forEach(function (m) {
       findings.appendChild(text(
         "Group member of \u201c" + (m.group_name || m.group_id || "a group entry") +

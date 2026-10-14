@@ -26,15 +26,18 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+
+import fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "data" / "scripts" / "refresh_isolated.py"
 STEP = ROOT / "data" / "scripts" / "refresh_workflow_step.sh"
 SNAP = ROOT / "data" / "scripts" / "snapshot.py"
-PY = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv" / "bin" / "python").exists() else "python3"
+PY = sys.executable
 
 
 def _env():
@@ -47,11 +50,21 @@ def _sha256(p: Path) -> str:
 
 @pytest.fixture(scope="module")
 def baseline_bundle(tmp_path_factory):
+    """Export a deterministic SYNTHETIC snapshot bundle (never the production
+    snapshot / raw exports)."""
+    tree = fixtures.build_tree(tmp_path_factory.mktemp("snap"))
+    _SRC_II = tree / "data" / "raw" / "cosing-annex-ii" / "COSING_Annex_II_v2.txt"
+    globals()["_SYNTH_ANNEX_II"] = _SRC_II
     out = tmp_path_factory.mktemp("baseline") / "snapshot-bundle.zip"
-    subprocess.run([PY, str(SNAP), "export", "--root", str(ROOT),
-                    "--output", str(out)],
-                   check=True, capture_output=True, text=True, env=_env())
+    fixtures.build_bundle(tree, out)
     yield out, _sha256(out)
+
+
+def _synth_annex_ii() -> Path:
+    src = globals().get("_SYNTH_ANNEX_II")
+    if src is None:
+        raise RuntimeError("synthetic Annex II source not built")
+    return src
 
 
 def _run_step(tmp_path, baseline, digest, annex_ii_fixture=None):
@@ -101,7 +114,7 @@ def test_workflow_retains_audit_on_changed(baseline_bundle, tmp_path):
     baseline, digest = baseline_bundle
     # A changed candidate (add a clear fixture row to Annex II) produces an out dir.
     fixture = tmp_path / "COSING_Annex_II_v2.txt"
-    shutil.copy2(ROOT / "data/raw/cosing-annex-ii/COSING_Annex_II_v2.txt", fixture)
+    shutil.copy2(_synth_annex_ii(), fixture)
     with fixture.open("a", encoding="utf-8") as fh:
         fh.write('1768,"Fixture Test Substance, Annex II",0000-00-0,,'
                  '"(EC) 2009/1223",,,,,,01/01/2026\n')

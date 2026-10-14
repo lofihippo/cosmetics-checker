@@ -1,0 +1,70 @@
+# Build the Linux release kit for the eu-reg services inside a container.
+#
+# Regulatory information, not legal advice.
+#
+# PURPOSE
+# ------
+# The local release kit on this machine is built for macOS/arm64 (see the kit's
+# `release-manifest.json`: target_platform darwin/arm64). The retained runtime
+# wheels for platform-specific packages (uvloop, httptools, pydantic-core,
+# websockets, PyYAML, watchfiles) are macOS wheels and will NOT install on a
+# Linux host. This image builds a **fresh Linux** kit using the SAME builder so
+# the platform-specific dependencies are real Linux wheels.
+#
+# This image is for LOCAL VALIDATION ONLY and does not publish/deploy. The
+# services bind to 127.0.0.1 inside the container; you expose them behind a
+# reverse proxy for a real host (see deploy/linux/README.md).
+#
+# BUILD (from the repository root; the snapshot bundle must be staged):
+#   docker build -f deploy/linux/Dockerfile -
+#        --build-arg SNAPSHOT_BUNDLE=/abs/path/verified-annex-bundle.zip .
+#
+#   For a quicker, mount-based build use deploy/linux/build_linux_kit.sh instead
+#   (it does not bake the snapshot into an image layer).
+#
+# RUN (local validation only; TLS terminates outside / behind the proxy):
+#   docker run --rm -p 127.0.0.1:8000:8000 -p 127.0.0.1:8010:8010 \
+#     -e EU_REG_PORT=8000 -e PORT=8010 eu-release-linux:local
+#
+# Regeneration: the builder caches the exact pinned runtime wheels from
+# `deploy/runtime.lock`; rebuild the image after any change to that lock or to
+# the maintained packages.
+
+# Same CPython major.minor as the kit declares (3.14) on a slim Linux base.
+FROM python:3.14-slim
+
+# Build-only tooling: the builder's only network step (downloading the pinned
+# runtime wheels) needs pip; building the four local wheels needs setuptools/
+# wheel.
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+WORKDIR /src
+
+# Copy only what the builder needs, preserving the checkout layout so the
+# builder's ROOT detection (`parents[1]` of deploy/build_deployment.py) works
+# exactly as it does in the repository. This is SOURCE only; the services are
+# installed non-editably from the built wheelhouse (no editable source path).
+COPY packages ./packages
+COPY data/scripts ./data/scripts
+COPY LICENSE LICENSES.md pyproject.toml ./
+COPY deploy/build_deployment.py deploy/runtime.lock ./deploy/
+
+# Stage the verified, release-eligible snapshot bundle.
+ARG SNAPSHOT_BUNDLE=/tmp/snapshot-bundle.zip
+COPY ${SNAPSHOT_BUNDLE} /tmp/snapshot-bundle.zip
+
+# Build the Linux release kit into /opt/release-kit.
+RUN python deploy/build_deployment.py \
+      --snapshot-bundle /tmp/snapshot-bundle.zip \
+      --dest /opt/release-kit
+
+# The services read the snapshot from the kit's own snapshot tree and bind to
+# 127.0.0.1. Expose both documented ports.
+EXPOSE 8000 8010
+
+# Default: start both services on loopback. In the real host path a supervisor
+# (systemd / a process manager) runs these separately; this entrypoint is for
+# local container validation. The kit launchers live at /opt/release-kit.
+COPY deploy/linux/start.sh /usr/local/bin/start-eu-services.sh
+WORKDIR /opt/release-kit
+CMD ["start-eu-services.sh"]

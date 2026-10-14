@@ -2,68 +2,72 @@
 
 Regulatory information, not legal advice.
 
-This guide describes the source in the GitHub draft. The later local cosmetics-checker working tree is not synchronized by this documentation update. Do not assume that a local milestone or test result applies to this checkout.
+This describes the cosmetics-checker local-preview implementation, now carried forward from the initial Ing Checker import. The short entry point is the root README; package READMEs contain interface details.
 
-## How a check works
+## Data flow
 
 ```text
-Official exports -> normalizer -> SQLite / JSONL / metadata
-                                      |
-                                 shared registry
-                                      |
-                               label / formula checker
-                                      |
-                    CLI reports, API, playground, scanner
+Official exports / retained legal document
+    -> staged import + identity reconciliation
+    -> verified SQLite + JSONL + metadata snapshot
+    -> eu-reg-lists registry / shared assessments
+    -> eu-ingredient-linter label and formula reports
+    -> CLI, FastAPI, browser playground, scanner
 ```
 
-The scanner supplies text to the checker. Barcode lookup retrieves a community product record; browser OCR produces an editable draft from a photo. Neither source is a regulatory determination. The user reviews the text before submitting it.
+The scanner adds an input step: a barcode retrieves a community product record, or local OCR extracts an editable draft. The user reviews the text and explicitly submits it to the same checking engine. It does not infer concentrations from ingredient order.
 
-## Code map
+## Packages and boundaries
 
-| Location | Responsibility |
-|---|---|
-| `data/scripts/` | Fetching, parsing, identity reconciliation, snapshot verification and isolated refresh |
-| `packages/eu-reg-lists/` | Substance/rule models, identifiers, aliases, source metadata and registry lookup |
-| `packages/eu-ingredient-linter/` | Tokenization, label/batch/formula evaluation, argparse CLI and report rendering |
-| `packages/eu-reg-api/` | FastAPI/Pydantic contracts, Uvicorn server, OpenAPI, label playground and formula editor |
-| `packages/scan-to-check/` | Product-provider client, separate FastAPI server, camera input, OCR and PWA assets |
-| `.github/actions/` and `.github/workflows/` | Optional checks for ingredient-file changes and snapshot/quality automation |
-| `eu_lint.py`, `app.py` | Historical single-file prototype and Streamlit demo using curated data |
+- `packages/eu-reg-lists`: dataclass models, exact identity/alias resolution, direct and group-linked rules, coverage and the entry-70 evaluator. SQLite and JSONL are alternative representations of the same normalized snapshot.
+- `packages/eu-ingredient-linter`: tokenization, label/batch reports, structured CSV/TSV/JSON inputs, formula evaluation and text/JSON/CSV/HTML/GitHub reporters. The CLI uses standard-library argparse. Reporters present assessments; they do not reinterpret legislation.
+- `packages/eu-reg-api`: FastAPI/Pydantic request and response contracts, Uvicorn service, OpenAPI, static label and formula interfaces. It reads the loaded snapshot; requests do not refresh data.
+- `packages/scan-to-check`: a separate FastAPI service calling the shared libraries directly. It is not an HTTP client of `eu-reg-api`. It owns the product-provider adapter and serves plain HTML/JavaScript, native camera barcode detection where available, Tesseract OCR and the PWA shell.
+- `eu_lint.py` and `app.py`: retained prototype and Streamlit demo. Their curated seed is not the authoritative production dataset. Food examples there do not make the scanner a food checker.
 
-Both servers call the Python libraries. The scanner does not need to send a second HTTP request to the developer API. Their JavaScript presents results and manages input; it should not implement a separate regulatory interpreter.
+This is a small Python monorepo, not a distributed service architecture. Two server entry points serve different audiences; both use the same libraries and snapshot. No React/Next.js, pandas, DuckDB or Typer migration is needed merely because those appeared in the original proposal.
 
-## Regulatory evidence
+## Identity and regulatory evidence
 
-The registry retains multiple rules for one substance and keeps explicitly linked group evidence separate from member identities. Exact identifiers and aliases are preferable to fuzzy guesses. Ambiguous identity matches must stay unresolved.
+An identity can hold several rules. Names, aliases and CAS/EC/CI identifiers are resolved explicitly; ambiguity is unresolved or quarantined rather than silently assigned. Group records retain their source identity and link to named members; nano/form distinctions remain separate.
 
-CosIng lists have different purposes: prohibition, restriction and conditional positive lists are not interchangeable. Formula checks use explicit concentration, unit, basis and product context for a bounded set of mappings. Unsupported conditions remain unresolved; a successful numeric comparison is not an overall compliance verdict.
+CosIng Annex II–VI records preserve source conditions, exceptions, official reference numbers and physical row locators. Conditional allowance is not unconditional approval. A source record's headline status is distinct from the contextual assessment shown to the user.
 
-Reports preserve regulation references, source URLs, snapshot `data_updated_at` and available/missing coverage. Build time, retrieval time and upstream publication time are different facts. A source's physical row position is also distinct from its official reference number.
+Formula evaluation uses Decimal, explicit units, concentration basis, product context and, for date-dependent mappings, an assessment date. Unsupported interpretations remain manual review or missing context. Known warnings and linked rules survive even when a numeric comparison is possible. Entry 70 is a bounded source-backed addition, not full Annex XVII coverage; its compatible source mapping must be present in the loaded snapshot before evaluation is enabled.
 
-The curated prototype is historical and does not establish production food coverage. This draft lacks the later local source-gated REACH entry-70 integration and ECHA release-policy guard. Source/reuse review is needed before any acquisition or distribution; do not run broad refreshes merely to start a demo.
+Snapshot build time (`data_updated_at`), source publication/update dates and retrieval time have separate meanings. Historical snapshots must never acquire a new freshness claim merely by being reopened.
 
-## Snapshots and automation
+## Import, refresh and distribution
 
-Raw and processed data files are separate from the source checkout. `snapshot.py` provides export, verification and import; bundles carry hashes and provenance. A digest detects changes but does not independently authenticate the publisher. Use a trusted bundle compatible with this code, and import it into a new directory.
+`data/scripts/fetch.py` stages downloads and records attempts. The normalizer parses the actual export schema, reconciles identities and preserves accepted data when a replacement fails. ECHA acquisition remains disabled under the current release policy.
 
-The staged fetch/normalize and isolated-refresh paths are intended to preserve a usable baseline when an update fails. Review changes before promotion. The refresh workflow's existence is not evidence that hosted publication is configured or working.
+`snapshot.py` verifies file hashes, provenance, normalized content identity and SQLite/JSONL parity. Versioned content-hash contracts keep historical bundles verifiable. Hash integrity alone does not authenticate a publisher; the bundle and expected digest still need a trusted source.
 
-The reusable Action runs the CLI in a container against an explicit snapshot and produces annotations plus a report. A pull request can trigger that check when an ingredient file changes. GitHub source hosting, GitHub automation and public app hosting are three different things; no public service is provided by this repository alone.
+`refresh_isolated.py` restores a baseline into a run-owned tree and builds a candidate separately. No-change selects the immutable baseline. Rule removals and semantic changes are reviewable; source evidence and failure audits are retained. Local candidate preparation is implemented; durable hosted publication remains separate work.
 
-## Browser, OCR and PWA
+## Browser lifecycle, OCR and PWA
 
-The frontends use plain HTML/CSS/JavaScript. Request generation guards prevent stale responses from restoring results after an edit. Camera and OCR work use session ownership and cleanup rather than relying on cancellation alone.
+The browser renders backend assessments using safe text operations. A generation/session identity guards every asynchronous continuation so old requests cannot restore results after an edit. Cancellation releases resources; identity checks protect against transports that ignore cancellation.
 
-Tesseract assets are vendored with recorded versions, hashes and notices. A version-specific Worker compatibility adapter handles an initialization-failure case. Preserve its tests and reassess it when upgrading the dependency.
+Tesseract.js 6.0.1, core 6.0.0 and English model assets are vendored with hashes and notices. Images are processed in the browser, then only reviewed text is checked. A narrowly scoped, version-coupled Worker adapter handles initialization failures that otherwise leak native workers. Re-test that adapter when upgrading Tesseract; it is not a generic concurrency abstraction.
 
-The service worker uses a content-derived shell version, explicit cache boundaries and user-consented updates. It does not turn backend checks, product lookup or OCR into a fully offline application. Physical-device installation and camera behavior require separate acceptance.
+The service worker caches an explicit app shell under a content-derived version. It does not cache API findings, labels, images or the OCR vendor tree. An update waits for user consent so HTML and JavaScript remain one coherent version. The PWA is not a fully offline regulatory checker.
 
-## Working on this draft
+## CLI, Actions and release kits
 
-Read `AGENTS.md` and package instructions first. Reproduce a concrete issue, preserve accepted snapshot bytes, and keep shared interpretation in the Python engine. Run relevant tests after code changes; test installed assets outside the checkout when packaging changes.
+The CLI supports people doing batch checks and scripts consuming reports. A GitHub Action wraps that same CLI in Docker, verifies an explicit snapshot, escapes annotations, validates a current-run report and publishes it atomically. Operational failures remain failures even when the caller permits ingredient findings. A pull request is simply the occasion for checking a changed ingredient file; it is not required for ordinary app use.
 
-Some historical package documentation records earlier milestones. Resolve conflicting status statements against the code and loaded snapshot, not the order in which the notes were appended. The original root README is preserved under `docs/history/` rather than deleted.
+`deploy/build_deployment.py` creates platform-specific kits using ordinary wheels and a pinned runtime wheelhouse. Generated installers validate artifacts and the target interpreter/platform before replacing a runtime, and roll back on failure. Launchers resolve their snapshot relative to the installed kit. Docker is used for reproducibility and container checks, not required for the everyday local browser preview. GitHub hosts source and automation; public app hosting has not been completed.
 
-Avoid `make clean` as routine housekeeping: it removes processed data. Stop only owned preview processes, not every listener on a port. Do not commit private notes, downloaded exports or local snapshot bundles merely to make a fresh clone runnable.
+## Maintain or resume
 
-Before a release, reconcile the newer local application work with this repository, run its quality gate on the intended platform, and document the exact supported snapshot. Hosting, rate limits, device acceptance and ongoing source updates then need their own evidence.
+1. Read `AGENTS.md`, the current scope and the latest local handoff; preserve user edits and the accepted snapshot.
+2. Reproduce a concrete problem before changing the engine. Keep legal interpretation in the shared backend.
+3. For a source change, verify current official text, amendments and reuse conditions, build an isolated candidate and retain the accepted baseline.
+4. Run focused regressions, then the relevant quality gate when code changes. Do not rerun the entire suite for prose-only edits.
+5. Verify installed wheels outside the checkout when changing packaging or assets.
+6. Distinguish local tests, user feedback, physical-device checks and hosted runs in reports.
+
+Do not use `make clean` for casual housekeeping: its current target deletes processed regulatory data. Preserve `.local-reference/` milestones, bundles and evidence. Stop only processes whose ownership is known, never all listeners on a familiar port.
+
+Current next steps are specific usability feedback, later regulatory-source currentness review, and keeping future code and snapshot releases reproducible. Physical-device testing, public hosting, rate limiting and durable hosted refresh remain deferred.

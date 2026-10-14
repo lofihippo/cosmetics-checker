@@ -267,6 +267,15 @@ paths:
                         description: 'Optional boolean: ready-for-use. A False value
                           is contradictory for a ready-for-use rule and leaves the
                           numeric comparison unresolved.'
+                      assessment_date:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        title: Assessment Date
+                        description: Optional ISO-8601 assessment date (YYYY-MM-DD).
+                          Required for a transition/effective-date boundary; a supplied
+                          but invalid date is rejected (never silently ignored). Uses
+                          the source-version basis for the assessment date.
                     type: object
                     required:
                     - ingredient
@@ -336,6 +345,16 @@ paths:
                     unit: '%'
                     basis: after_mixing
                     product_type: artificial_nail_system
+              entry70-d5-washoff:
+                summary: REACH Annex XVII entry 70, D5 wash-off
+                value:
+                  ingredients:
+                  - ingredient: 541-02-6
+                    percent: 0.5
+                    unit: '% w/w'
+                    basis: ready_for_use
+                    product_type: wash-off
+                    assessment_date: '2028-01-01'
         required: true
       responses:
         '200':
@@ -512,6 +531,11 @@ components:
           - type: string
           - type: 'null'
           title: Evaluation Reason
+        prohibition_finding:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Prohibition Finding
         membership:
           items:
             additionalProperties: true
@@ -523,6 +547,12 @@ components:
             $ref: '#/components/schemas/RuleModel'
           type: array
           title: Linked Rules
+        entry70:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Entry70
       type: object
       required:
       - ingredient
@@ -542,12 +572,32 @@ components:
             type: string
           type: array
           title: Missing
+        not_included:
+          items:
+            type: string
+          type: array
+          title: Not Included
         has_annex_ii:
           type: boolean
           title: Has Annex Ii
         note:
           type: string
           title: Note
+        annex17_entries:
+          items:
+            type: string
+          type: array
+          title: Annex17 Entries
+        annex17_branches:
+          items:
+            type: string
+          type: array
+          title: Annex17 Branches
+        annex17_source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Annex17 Source
       type: object
       required:
       - has_annex_ii
@@ -721,6 +771,12 @@ components:
           - type: string
           - type: 'null'
           title: Prohibition Finding
+        entry70:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Entry70
         submitted_context:
           additionalProperties: true
           type: object

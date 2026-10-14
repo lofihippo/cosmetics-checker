@@ -166,7 +166,7 @@ CSV_COLUMNS = [
     "applicable_context", "prohibition_finding",
     "submission_context", "conditions_fingerprint", "conditions_list",
     "source_scope_text", "conditions_summary",
-    "unresolved_requirements", "reasons", "membership", "meta",
+    "unresolved_requirements", "reasons", "membership", "entry70", "meta",
 ]
 
 
@@ -227,20 +227,28 @@ def _record_line(record: Dict[str, Any],
         "verdict": record.get("verdict"),
         "evaluation": record.get("evaluation"),
         "evaluation_reason": record.get("evaluation_reason"),
-        "official_reference": raw.get("official_reference"),
-        "reference_number": raw.get("reference_number"),
+        "official_reference": _entry70_field(record, evidence_kind, "entry")
+        if evidence_kind == "entry70" else raw.get("official_reference"),
+        "reference_number": _entry70_field(record, evidence_kind, "entry")
+        if evidence_kind == "entry70" else raw.get("reference_number"),
         "regulation": (rule or {}).get("regulation") if rule is not None
-        else prov.get("regulation"),
+        else (_entry70_source(record, evidence_kind, "regulation")
+              or prov.get("regulation")),
         "source_url": (rule or {}).get("source_url") if rule is not None
-        else prov.get("source_url"),
+        else (_entry70_source(record, evidence_kind, "source_url")
+              or prov.get("source_url")),
         "source_updated_at": (rule or {}).get("source_updated_at") if rule is not None
         else prov.get("source_updated_at"),
-        "data_updated_at": data_updated_at,
+        "data_updated_at": _entry70_field(record, evidence_kind, "data_updated_at")
+        if evidence_kind == "entry70" else data_updated_at,
         "retrieved_at": raw.get("retrieved_at") or prov.get("retrieved_at"),
-        "row_reference": raw.get("row_reference"),
+        "row_reference": _entry70_field(record, evidence_kind, "row_reference")
+        if evidence_kind == "entry70" else raw.get("row_reference"),
         "source_file": raw.get("source_file"),
-        "source_sha256": raw.get("source_sha256"),
-        "source_kind": raw.get("source_kind"),
+        "source_sha256": _entry70_field(record, evidence_kind, "source_sha256")
+        if evidence_kind == "entry70" else raw.get("source_sha256"),
+        "source_kind": _entry70_field(record, evidence_kind, "source_kind")
+        if evidence_kind == "entry70" else raw.get("source_kind"),
         "submitted_value": record.get("submitted_value"),
         "unit": record.get("unit"),
         "basis": record.get("basis"),
@@ -257,8 +265,38 @@ def _record_line(record: Dict[str, Any],
         "unresolved_requirements": _json_cell(record.get("unresolved_requirements")),
         "reasons": _json_cell(record.get("reasons")),
         "membership": _json_cell(_membership_of(record)),
+        # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence, surfaced
+        # as a distinct column. Present only for an entry70 evidence row.
+        "entry70": _json_cell(record.get("entry70")),
         "meta": "",
     }
+
+
+def _entry70_source(record: Dict[str, Any], evidence_kind: str, key: str):
+    """Return a citation field from the entry70 source dict, when present."""
+    if evidence_kind != "entry70":
+        return None
+    e70 = record.get("entry70") or {}
+    src = e70.get("source") or {}
+    return src.get(key)
+
+
+def _entry70_field(record: Dict[str, Any], evidence_kind: str, key: str):
+    """Return a citation/provenance field from the entry70 result dict."""
+    if evidence_kind != "entry70":
+        return None
+    e70 = record.get("entry70") or {}
+    if key == "row_reference":
+        return e70.get("provenance", {}).get("row_reference")
+    if key == "source_kind":
+        return e70.get("source_kind")
+    if key == "data_updated_at":
+        return e70.get("data_updated_at")
+    if key == "source_sha256":
+        return e70.get("document_sha256") or e70.get("source", {}).get("document_sha256")
+    if key in ("entry", "official_reference", "reference_number"):
+        return e70.get("entry") or (e70.get("source") or {}).get("entry")
+    return e70.get(key)
 
 
 def _meta_rows(report: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -326,7 +364,12 @@ def _iter_rule_rows(record: Dict[str, Any], report_kind: str,
     """
     direct = _rules_of(record)
     linked = _linked_rules_of(record)
-    if not direct and not linked:
+    entry70 = record.get("entry70")
+    # A source-bound REACH Annex XVII entry 70 finding is rendered as its own
+    # evidence row (``evidence_kind="entry70"``) when present, always alongside
+    # (never instead of) the CosIng direct/linked rules. It is separate evidence
+    # and never alters the CosIng determination.
+    if not direct and not linked and not entry70:
         yield _record_line(record, report_kind, batch_item_index,
                            item_ingredient_index, "no_rule", None,
                            report_data_updated_at)
@@ -338,6 +381,10 @@ def _iter_rule_rows(record: Dict[str, Any], report_kind: str,
     for rule in linked:
         yield _record_line(record, report_kind, batch_item_index,
                            item_ingredient_index, "linked", rule,
+                           report_data_updated_at)
+    if entry70:
+        yield _record_line(record, report_kind, batch_item_index,
+                           item_ingredient_index, "entry70", None,
                            report_data_updated_at)
 
 
@@ -459,6 +506,7 @@ def _render_html(report: Dict[str, Any]) -> str:
     parts.append(f"<dt>registry_size</dt><dd>{_esc(report.get('registry_size'))}</dd>")
     parts.append(f"<dt>available</dt><dd>{_esc(', '.join(cov.get('available', [])) or '(none)')}</dd>")
     parts.append(f"<dt>missing</dt><dd>{_esc(', '.join(cov.get('missing', [])) or '(none)')}</dd>")
+    parts.append(f"<dt>not_included</dt><dd>{_esc(', '.join(cov.get('not_included', [])) or '(none)')}</dd>")
     parts.append("<dt>coverage_note</dt><dd>"
                  f"{_esc(cov.get('note', 'Missing lists are a coverage gap, NOT a clean result.'))}</dd>")
     parts.append("</dl>")
@@ -553,7 +601,7 @@ def _ingredient_html(record: Dict[str, Any], heading: str,
     if sub_ctx:
         parts.append("<dl class='grid context'>")
         for key in ("unit", "basis", "product_type", "body_area",
-                    "professional_use", "ready_for_use"):
+                    "professional_use", "ready_for_use", "assessment_date"):
             if key in sub_ctx:
                 parts.append(f"<dt>{_esc(key)}</dt><dd>{_esc(sub_ctx[key])}</dd>")
         parts.append("</dl>")
@@ -590,14 +638,58 @@ def _ingredient_html(record: Dict[str, Any], heading: str,
                          f"(annex {_esc(m.get('annex'))}, "
                          f"ref {_esc(m.get('official_reference'))})</li>")
         parts.append("</ul></div>")
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence, rendered as its
+    # own block and never replacing the CosIng findings above.
+    e70 = record.get("entry70")
+    if e70:
+        parts.append(_entry70_html(e70))
     # Unknown / unresolved marker.
     if record.get("is_in_dataset") is False or record.get("determination") == "unknown":
         parts.append("<p class='unknown'>Unknown / unresolved identity — never "
                      "a clean result.</p>")
-    if not direct and not linked and record.get("is_in_dataset") is not False:
+    if not direct and not linked and not e70 and record.get("is_in_dataset") is not False:
         parts.append("<p class='unresolved'>No direct or linked regulatory rule "
                      "retained in this snapshot; not a compliance determination.</p>")
     parts.append("</article>")
+    return "\n".join(parts)
+
+
+def _entry70_html(e70: Dict[str, Any]) -> str:
+    """Render the source-bound REACH Annex XVII entry 70 evidence block."""
+    s = e70.get("source") or {}
+    p = e70.get("provenance") or {}
+    prov = e70.get("provenance") or {}
+    url = _safe_link(s.get("source_url"))
+    parts = ["<div class='rule entry70'><h5>REACH Annex XVII entry 70 evidence</h5>"]
+    parts.append("<dl class='grid'>")
+    rows = [
+        ("Substance", e70.get("substance_short")),
+        ("State", e70.get("state")),
+        ("Reason", e70.get("reason")),
+        ("Market threshold", e70.get("threshold")),
+        ("Operator", e70.get("operator")),
+        ("Branch", e70.get("branch")),
+        ("Effective date", e70.get("effective_date")),
+        ("Assessment date", e70.get("assessment_date")),
+        ("Submitted concentration", e70.get("submitted_percent")),
+        ("Submitted product type", e70.get("product_type")),
+        ("Regulation", s.get("regulation")),
+        ("CELEX", s.get("celex")),
+        ("ELI", s.get("eli")),
+        ("Document SHA-256", e70.get("document_sha256") or s.get("document_sha256")),
+        ("Reference / locator", prov.get("row_reference") or p.get("row_reference")),
+        ("data_updated_at", e70.get("data_updated_at")),
+    ]
+    for label, value in rows:
+        if value is not None and value != "":
+            parts.append(f"<dt>{_esc(label)}</dt><dd>{_esc(value)}</dd>")
+    if url:
+        parts.append(f"<dt>Source URL</dt><dd><a href='{_esc(url)}' "
+                     f"rel='noopener'>{_esc(url)}</a></dd>")
+    parts.append("</dl>")
+    for u in (e70.get("unresolved_requirements") or []):
+        parts.append(f"<p class='unresolved'>Entry 70 unresolved: {_esc(u)}</p>")
+    parts.append("</div>")
     return "\n".join(parts)
 
 
@@ -854,7 +946,13 @@ def _render_github(report: Dict[str, Any],
         # identity — never presented as a proven violation.
         direct = _rules_of(record)
         linked = _linked_rules_of(record)
-        if not direct and not linked:
+        # If an ingredient has no direct/linked rules AND no entry-70 evidence,
+        # emit a single annotation describing the unresolved identity (never a
+        # proven violation). A record with entry-70-only evidence must NOT take
+        # this "no rule" branch: it is still emitted as its own entry-70
+        # annotation below, so an entry-70 trigger is never described as "no
+        # regulatory rule".
+        if not direct and not linked and not record.get("entry70"):
             base = (f"{ingredient} [{_finding_type(record)}] resolved={resolved} "
                     f"determination={determination}; no regulatory rule in this "
                     f"snapshot; not a compliance determination")
@@ -886,6 +984,36 @@ def _render_github(report: Dict[str, Any],
                     rmsg += "; scope/conditions unresolved (not assessed)"
                 out.append(_annotation_command(level, rmsg, rtitle,
                                                file=github_file))
+        # Source-bound REACH Annex XVII entry 70 (D4/D5/D6) evidence, emitted as
+        # its own annotation. Severity derives from the evaluator assessment:
+        # an applicable_exceeds trigger is warning (a regulatory trigger, never
+        # a clean/complaint claim), and all other states are presented as their
+        # own unresolved/transition/unsupported state.
+        e70 = record.get("entry70")
+        if e70:
+            e70_level = "error" if e70.get("state") == "applicable_exceeds" else "warning"
+            s = e70.get("source") or {}
+            p = e70.get("provenance") or {}
+            e70_msg = (f"{ingredient} [entry70] state={e70.get('state')}; "
+                       f"substance={e70.get('substance_short')}; "
+                       f"branch={e70.get('branch') or 'n/a'}; "
+                       f"threshold={e70.get('threshold') or 'n/a'} "
+                       f"{e70.get('operator') or ''}; "
+                       f"effective={e70.get('effective_date') or 'n/a'}; "
+                       f"assessed={e70.get('assessment_date') or 'n/a'}; "
+                       f"submitted={e70.get('submitted_percent') or 'n/a'}%; "
+                       f"regulation={s.get('regulation')} "
+                       f"celex={s.get('celex')} "
+                       f"source={s.get('source_url')} "
+                       f"sha256={e70.get('document_sha256') or s.get('document_sha256')} "
+                       f"locator={p.get('row_reference') or 'n/a'} "
+                       f"data_updated_at={e70.get('data_updated_at') or 'n/a'}")
+            if e70.get("unresolved_requirements"):
+                e70_msg += "; unresolved: " + "; ".join(e70["unresolved_requirements"])
+            out.append(_annotation_command(
+                e70_level, e70_msg,
+                f"EU REACH Annex XVII entry 70 — {ingredient}",
+                file=github_file))
 
     out.append(_annotation_command("notice", DISCLAIMER, "EU Ingredient Linter"))
     return "\n".join(out) + ("\n" if out else "")
@@ -899,6 +1027,8 @@ def _render_human(report: Dict[str, Any]) -> str:
     if cov:
         buf.write(f"Coverage available: {', '.join(cov.get('available', [])) or '(none)'}\n")
         buf.write(f"Coverage missing:   {', '.join(cov.get('missing', [])) or '(none)'}\n")
+        buf.write(f"Coverage not_included (deliberately deferred): "
+                  f"{', '.join(cov.get('not_included', [])) or '(none)'}\n")
     if report.get("data_updated_at"):
         buf.write(f"data_updated_at: {report['data_updated_at']}\n")
     for e in report.get("evaluations", []):

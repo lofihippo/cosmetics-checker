@@ -2,13 +2,17 @@
 
 Regulatory information, not legal advice.
 
-A small local vertical slice: enter a barcode, look up the product's declared
-ingredients from the public **Open Beauty Facts / Open Food Facts** database,
-review/edit the ingredient label, then run the **existing** regulatory checker
-(`eu_ingredient_linter.ingredient_report`) and see cited results. It is the first
-product-facing milestone, **not** a full PWA — camera decoding works locally,
-photo OCR (Tesseract.js) is included as an editable draft, but PWA installation,
-service worker, offline caching, and hosted deployment remain follow-ups.
+A local cosmetic ingredient review interface: enter a barcode, retrieve a
+community-supplied product label, review or edit the text, and run the shared
+`eu_ingredient_linter.ingredient_report` checker. Manual text, camera barcode
+input and editable photo OCR are available. The PWA manifest, service worker
+and versioned shell cache are implemented; this is not a full offline checker.
+
+The owner tried the desktop examples and an ingredient photo on October 14,
+2026 and reported that most features worked. Physical-phone acceptance and
+public hosting remain deferred. The local preview services are stopped; the
+commands below restart them. Regulatory evidence and product provenance remain
+separate, and ECHA coverage is excluded under the current release policy.
 
 ## Launch (local)
 

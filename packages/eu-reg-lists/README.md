@@ -10,12 +10,14 @@ the data foundation that the `eu-ingredient-linter` (Phase 2) and `eu-reg-api`
 ## How the data is sourced (honesty)
 
 The pipeline **only ingests official export files** (CosIng Annex exports from
-the European Commission; ECHA packages). It does **not** scrape ECHA or any
-official website (per AGENTS.md #4).
+the European Commission). It does **not** scrape ECHA or any
+official website (per AGENTS.md #4). ECHA is **not** ingested in this release
+(acquisition is disabled/deferred).
 
 * `data/scripts/fetch.py` downloads official export files into `data/raw/`.
-  Sources that can't be fetched (e.g. ECHA returns 403 from some networks) are
-  recorded as **not fetched** — never scraped, never fabricated.
+  ECHA sources are configured with `enabled: false`, so a normal refresh never
+  contacts ECHA. Sources that can't be fetched (e.g. an ECHA URL would return
+  403) are recorded as **not fetched** — never scraped, never fabricated.
 * `data/scripts/normalize.py` reads those exports and produces:
   * `data/processed/eu_reg_lists.jsonl` — one substance per line
   * `data/processed/eu_reg_lists.sqlite` — queryable store
@@ -27,8 +29,9 @@ official website (per AGENTS.md #4).
 
 Consequence: in the current build, many recognised names are present as
 identities with `determination: "unknown"`, and `count_verified_rules` may be
-`0` until CosIng/ECHA exports are actually fetched and parsed. This is the
-honest state, not a bug.
+`0` until CosIng exports are actually fetched and parsed. This is the
+honest state, not a bug. ECHA exports are deliberately not fetched in this
+release.
 
 ## Install
 

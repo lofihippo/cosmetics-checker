@@ -26,12 +26,20 @@ import csv
 import io
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 # Determine the annex/status from the source kind.
+#
+# Only Annex XIV (authorisation) and Annex XVII (restrictions) carry a
+# ``restricted`` determination. The SVHC Candidate List is listing INFORMATION
+# under REACH Article 59: it identifies a substance of very high concern for
+# eventual authorisation, but membership is NOT itself a cosmetic prohibition
+# and NOT a supported concentration/violation limit. It is therefore assigned
+# the distinct ``listed`` status, never ``restricted`` or ``banned``. A
+# ``listed`` rule is surfaced as evidence requiring contextual review.
 ANNEX_BY_KIND = {
-    "svhc": ("SVHC", "restricted"),
+    "svhc": ("SVHC", "listed"),
     "annex-xiv": ("Annex XIV", "restricted"),
     "annex-xvii": ("Annex XVII", "restricted"),
 }
@@ -79,6 +87,7 @@ def parse_echa_csv(text: str, kind: str, source_url: str,
         raise ValueError(f"unknown ECHA kind: {kind!r}")
     annex, status = ANNEX_BY_KIND[kind]
 
+    dialect: Union[str, type[csv.Dialect]]
     try:
         dialect = csv.Sniffer().sniff(text[:4096], delimiters=",;\t")
     except csv.Error:

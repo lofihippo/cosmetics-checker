@@ -204,6 +204,14 @@ def _formula_request_extra() -> Dict[str, Any]:
                                  "unit": "%", "basis": "after_mixing",
                                  "product_type": "artificial_nail_system"}]},
                         },
+                        "entry70-d5-washoff": {
+                            "summary": "REACH Annex XVII entry 70, D5 wash-off",
+                            "value": {"ingredients": [
+                                {"ingredient": "541-02-6", "percent": 0.5,
+                                 "unit": "% w/w", "basis": "ready_for_use",
+                                 "product_type": "wash-off",
+                                 "assessment_date": "2028-01-01"}]},
+                        },
                     },
                 }
             },

@@ -221,6 +221,119 @@ def test_retained_successful_flows(page):
     assert p.locator(".ingredient-card.NOTFOUND").count() == 1
 
 
+def test_scoped_prohibition_is_not_presented_as_unconditional_banned(page):
+    """A scoped/exception-qualified Annex II prohibition must produce a
+    'Prohibition scope unresolved' headline (not an unconditional BANNED badge),
+    even though the original per-rule 'banned' status is preserved in the
+    labelled evidence. Benzene (unambiguous) keeps its clear prohibition."""
+    p, server = page
+    _run_check(p, server, "Hydroquinone")
+    card = p.locator("#ingredient-results .ingredient-card.FLAGGED").first
+    assert card.count() == 1
+    badge = card.locator(".badge").first.text_content()
+    assert badge == "Prohibition scope unresolved", badge
+    body = card.text_content()
+    # The per-rule status is still visible as evidence (not erased).
+    assert "banned" in body, body
+    assert "Annex II" in body and "(EC) 2009/1223" in body
+    # The unconditional-sounding body message must not appear.
+    assert "Prohibition scope unresolved." in body, body
+    assert "applicability to this product is not evaluated" in body
+    # The linked Annex III restriction is shown as an evaluated/identified
+    # restriction (its per-rule status preserved as evidence).
+    assert "Annex III" in body, body
+    assert "restriction_identified" in body, body
+
+    # Benzene must remain an unambiguous prohibition for contrast.
+    _run_check(p, server, "Benzene")
+    bcard = p.locator("#ingredient-results .ingredient-card.FLAGGED").first
+    assert bcard.locator(".badge").first.text_content() == "banned"
+    assert "Prohibition scope unresolved" not in bcard.text_content()
+
+
+def test_scoped_and_unambiguous_prohibitions_agree_in_summary(page):
+    """A label mixing a scoped prohibition and an unambiguous one keeps the
+    summary counts consistent: 2 flagged, only 1 definitive ban."""
+    p, server = page
+    _run_check(p, server, "Hydroquinone, Benzene")
+    summary = p.text_content("#summary")
+    assert "FLAGGED" in summary
+    assert "Banned: 1" in summary
+    assert "Flagged: 2" in summary
+    cards = p.locator("#ingredient-results .ingredient-card")
+    assert cards.count() == 2
+    # One card is scope-unresolved, the other unambiguous banned.
+    assert p.locator(".ingredient-card .badge", has_text="Prohibition scope unresolved").count() == 1
+    assert p.locator(".ingredient-card .badge", has_text="banned").count() == 1
+
+
+def test_d4_independent_prohibition_is_prominent_over_entry70(page):
+    """D4 (556-67-2) carries an independent, unambiguous CosIng Annex II
+    prohibition AND a source-bound REACH entry 70 (missing-context) finding.
+    The prominent headline/body must prioritise the CosIng prohibition while the
+    entry-70 finding is shown separately — never prioritised over the ban."""
+    p, server = page
+    _run_check(p, server, "556-67-2")
+    card = p.locator("#ingredient-results .ingredient-card.FLAGGED").first
+    assert card.count() == 1
+    # Summary counts the definitive ban.
+    assert "Banned: 1" in p.text_content("#summary")
+    # Headline badge prioritises the CosIng prohibition.
+    assert card.locator(".badge").first.text_content() == "banned"
+    body = card.text_content()
+    # The CosIng prohibition is prominent (unconditional wording).
+    assert "Banned/prohibited by CosIng" in body, body
+    assert "No concentration evaluation is applicable" in body, body
+    # The REACH entry 70 finding is preserved separately and not asserted as a
+    # trigger/applicable restriction.
+    assert "entry 70" in body.lower() or "Reach Annex XVII entry 70".lower() in body.lower()
+    assert "context-required" in body.lower() or "context required" in body.lower()
+    assert "never a category violation" in body.lower()
+    # The category-violation-style headline must not take priority.
+    assert "REACH entry 70 restriction identified (context required)" not in (
+        card.locator(".badge").first.text_content())
+    # Scoped phrasing preserved for the D4 CosIng rule (it is unambiguous).
+    assert "Prohibition scope unresolved" not in body
+
+
+def test_d5_label_only_wording_identifies_without_asserting_applicability(page):
+    """A label-only D5/D6 check identifies a REACH entry 70 restriction without
+    asserting that it applies or was triggered (missing context)."""
+    p, server = page
+    _run_check(p, server, "Cyclopentasiloxane")
+    card = p.locator("#ingredient-results .ingredient-card.FLAGGED").first
+    assert card.count() == 1
+    body = card.text_content()
+    assert "context required" in body.lower()
+    assert "restriction identified" in body.lower()
+    # The prominent interpretation never asserts applicability/trigger; it only
+    # says the restriction is identified and applicability requires the missing
+    # context. (The entry-70 evidence reason legitimately says "which branch
+    # applies is unresolved" — that is about the unresolved branch, not a claim
+    # that the restriction applies to the product.)
+    assert "no supported restriction trigger is asserted" in body.lower()
+    assert "applicability requires the missing" in body.lower()
+    assert "no threshold violation has been established" in body.lower()
+    # Unknown-with-no-rule wording is not used (entry 70 finding is real evidence).
+    assert "No verified rule was found" not in body
+    # The summary uses identified language, not triggered.
+    assert "was identified" in p.text_content("#summary")
+    assert "triggered" not in p.text_content("#summary").lower()
+
+
+def test_scoped_and_unknown_cases_remain_correct(page):
+    """Scoped-prohibition and unknown/not-found cases keep their established
+    wording (not regressed by the entry-70 presentation change)."""
+    p, server = page
+    # Scoped Hydroquinone keeps scope-unresolved headline.
+    _run_check(p, server, "Hydroquinone")
+    assert "Prohibition scope unresolved" in p.text_content("#ingredient-results")
+    # Unknown-Aqua keeps unknown wording.
+    _run_check(p, server, "Aqua")
+    assert "unknown, never clean" in p.text_content("#ingredient-results")
+    assert "No verified rule was found" in p.text_content("#ingredient-results")
+
+
 # ---------------------------------------------------------------------------
 # Deterministic request-invalidation tests.
 # These inject a controllable window.fetch that IGNORES AbortSignal, so the

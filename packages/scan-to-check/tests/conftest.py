@@ -52,6 +52,21 @@ def make_registry():
     water = erl.Substance(id="water", name="Aqua", aliases=["water"],
                           cas="7732-18-5", ec="231-791-2",
                           determination="unknown", rules=[])
+    zinc = erl.Substance(
+        id="zinc-pyrithione", name="Zinc pyrithione", aliases=["zinc  pyrithione"],
+        cas="13463-41-7", ec="236-671-3", determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EU) 2021/1902",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        raw={"source_kind": "cosing-annex-ii",
+                             "source_file": "COSING_Annex_II_v2.txt",
+                             "source_sha256": "abc",
+                             "row_reference": "COSING_Annex_II_v2.txt#1",
+                             "official_reference": 1, "accepted": True,
+                             "retrieved_at": DATA_UPDATED_AT})],
+        sources=["cosing-annex-ii"],
+    )
     # Sodium benzoate: known identity; its group (Annex V) rule is surfaced as
     # linked evidence by the real checker via membership resolution.
     sodium = erl.Substance(
@@ -84,6 +99,33 @@ def make_registry():
                         })],
         sources=["cosing-annex-v"],
     )
+    # A scoped Annex II prohibition (Hydroquinone-like): source scope/exception
+    # qualifier -> shared checker classifies as scope_unresolved, never an
+    # unconditional "banned" headline.
+    hydroq = erl.Substance(
+        id="hydroquinone", name="Hydroquinone", cas="123-31-9", ec="204-617-8",
+        determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        conditions=None,
+                        raw={"source_kind": "cosing-annex-ii",
+                             "source_file": "COSING_Annex_II_v2.txt",
+                             "source_sha256": "abc",
+                             "row_reference": "COSING_Annex_II_v2.txt#1339",
+                             "entry_number": 1339,
+                             "reference_number": 1339,
+                             "official_reference": 1339,
+                             "accepted": True,
+                             "retrieved_at": DATA_UPDATED_AT,
+                             "conditions_list": None,
+                             "source_row": {
+                                 "Chemical name / INN":
+                                     "Hydroquinone with the exception of entry 14"},
+                             })],
+        sources=["cosing-annex-ii"],
+    )
     verified_sources = {
         "cosing-annex-ii": {"kind": "cosing-annex", "present": True,
                             "accepted": True, "fetched": True,
@@ -99,12 +141,12 @@ def make_registry():
         "title": "test", "version": "0.2.0",
         "data_updated_at": DATA_UPDATED_AT,
         "content_hash": "testhash1234",
-        "count_substances": 4, "count_verified_rules": 2,
+        "count_substances": 5, "count_verified_rules": 3,
         "count_identity_only": 1, "count_quarantined": 0,
         "verified_sources": verified_sources,
         "snapshot": verified_sources,
     }
-    reg = erl.Registry([benzene, water, sodium, benzoate_group],
+    reg = erl.Registry([benzene, zinc, water, sodium, benzoate_group, hydroq],
                        data_updated_at=DATA_UPDATED_AT,
                        verified_sources=verified_sources, metadata=metadata)
     return reg, metadata

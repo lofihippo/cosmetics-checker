@@ -540,6 +540,25 @@ class TestCLI:
         p = _run("--format", "json")
         assert p.returncode == 2
 
+    def test_long_pasted_label_is_not_treated_as_filename(self):
+        # Regression: `Path(label).is_file()` on a long pasted label raises
+        # ENAMETOOLONG on Python 3.12. A value that exceeds the OS path limit
+        # cannot be a filename, so it must be handled as a raw label and the
+        # CLI must not traceback or emit empty stdout.
+        label = ", ".join(
+            ["water", "glycerin", "sodium lauryl sulfate", "red 40",
+             "methylparaben", "fragrance", "titanium dioxide"]
+            * 4
+        )
+        assert len(label) > 200
+        p = _run(label, "--format", "json")
+        assert p.returncode in (0, 1)
+        assert p.stderr == ""
+        data = json.loads(p.stdout)
+        assert data["results"]
+        # No traceback leaked into stdout; the payload is valid JSON.
+        assert "Traceback" not in p.stdout
+
 
 # ---------------------------------------------------------------------------
 # Freshness / provenance honesty (Finding 5).

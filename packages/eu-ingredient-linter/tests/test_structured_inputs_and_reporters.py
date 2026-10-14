@@ -112,6 +112,30 @@ def test_csv_rejects_unsupported_column(tmp_path):
         read_structured(str(p), "csv")
 
 
+def test_csv_accepts_assessment_date(tmp_path):
+    """CSV/TSV supports the validated assessment_date column (same contract as
+    JSON/API): a valid ISO date is parsed; a malformed one is rejected."""
+    p = tmp_path / "f.csv"
+    p.write_text("ingredient,percent,unit,basis,product_type,assessment_date\n"
+                 "Toluene,20,%,ready_for_use,nail_product,2028-01-01\n")
+    rec = read_structured(str(p), "csv")["ingredients"][0]
+    assert rec["assessment_date"] == "2028-01-01"
+
+
+def test_tsv_rejects_malformed_assessment_date(tmp_path):
+    """The malformed date is rejected (never silently ignored) via the shared
+    FormulaIngredient validation."""
+    from eu_reg_lists import Registry
+    p = tmp_path / "f.tsv"
+    p.write_text("ingredient\tpercent\tunit\tbasis\tassessment_date\n"
+                 "Toluene\t20\t%\tready_for_use\tnotadate\n")
+    rec = read_structured(str(p), "tsv")
+    reg = Registry([], data_updated_at="2026-01-01")
+    with pytest.raises(ValueError) as exc:
+        evaluate_formula(rec, reg)
+    assert "assessment_date is not a valid ISO date" in str(exc.value)
+
+
 def test_csv_rejects_partial_unnamed_row(tmp_path):
     p = tmp_path / "f.csv"
     p.write_text("ingredient,percent\n,1\n")
@@ -221,6 +245,96 @@ def test_csv_direct_and_linked_evidence_separate_rows():
             assert r[idx["regulation"]]
             assert r[idx["official_reference"]]
             assert r[idx["row_reference"]]
+
+
+def test_csv_surfaces_entry70_as_separate_evidence_row():
+    """A source-bound REACH Annex XVII entry 70 finding renders as its own CSV
+    evidence row (``evidence_kind="entry70"``) with the annex17 citation,
+    alongside (never instead of) the CosIng direct/linked rules."""
+    from io import StringIO
+    from eu_ingredient_linter.formula import evaluate_formula
+    d4 = erl.Substance(
+        id="d4", name="Octamethylcyclotetrasiloxane; D4", cas="556-67-2",
+        ec="209-136-7", determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                    regulation="(EC) 2009/1223",
+                    source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                    source_updated_at=None, resolution="cosing-annex-ii",
+                    raw={"source_kind": "cosing-annex-ii",
+                         "official_reference": 1388})],
+        sources=["cosing-annex-ii"])
+    reg = erl.Registry([d4], data_updated_at="2022-01-01")
+    _activate_entry70(reg)
+    report = evaluate_formula({"ingredients": [
+        {"ingredient": "556-67-2", "percent": "0.10", "unit": "%",
+         "basis": "ready_for_use", "product_type": "wash-off",
+         "assessment_date": "2028-01-01"}]}, reg)
+    csv_text = render(report, "csv")
+    rows = list(csv.DictReader(StringIO(csv_text)))
+    entry_rows = [r for r in rows if r["evidence_kind"] == "entry70"]
+    assert len(entry_rows) == 1
+    assert "D4" in (entry_rows[0]["entry70"] or "")
+    assert "applicable_exceeds" in (entry_rows[0]["entry70"] or "")
+    # The CosIng direct rule is still present as its own row.
+    assert any(r["evidence_kind"] == "direct" for r in rows)
+
+
+def _activate_entry70(reg):
+    """Attach an accepted, compatible entry 70 source/mapping record so the
+    release-gating contract lets the evaluator run (Part C)."""
+    from eu_reg_lists.annex17_entry70 import ENTRY70_SOURCE, ENTRY70_SOURCE_KIND
+    reg.verified_sources[ENTRY70_SOURCE_KIND] = {
+        "present": True, "accepted": True, "kind": "reach-legal-act",
+        "files": {"OJ.pdf": {"sha256": ENTRY70_SOURCE["document_sha256"],
+                             "byte_len": 1}},
+        "data_updated_at": "2022-01-01", "retrieved_at": "2022-01-01",
+        "mapping": {
+            "mapping_version": ENTRY70_SOURCE["mapping_version"],
+            "document_sha256": ENTRY70_SOURCE["document_sha256"],
+            "supported_substances": list(ENTRY70_SOURCE["supported_substances"]),
+            "supported_branches": list(ENTRY70_SOURCE["supported_branches"]),
+        },
+    }
+
+
+def test_entry70_cas_and_inci_alias_equivalent_and_basis_gated():
+    """CAS and the verified INCI alias produce an equivalent entry 70 assessment
+    (resolving once through the registry), and a missing/incompatible marketed
+    concentration basis cannot produce a product comparison."""
+    from eu_ingredient_linter.formula import evaluate_formula
+    d5 = erl.Substance(
+        id="cyclopentasiloxane", name="Cyclopentasiloxane", cas="541-02-6",
+        ec="208-764-9", determination="unknown", rules=[],
+        aliases=["D5"], sources=[])
+    reg = erl.Registry([d5], data_updated_at="2026-01-01",
+                       verified_sources={
+                           "cosing-annex-ii": {"present": True, "accepted": True},
+                           "echa-svhc": {"present": False, "accepted": False},
+                       })
+    _activate_entry70(reg)
+    ctx = {"percent": "0.5", "unit": "%", "basis": "ready_for_use",
+           "product_type": "wash-off", "assessment_date": "2028-01-01"}
+    cas = evaluate_formula({"ingredients": [{"ingredient": "541-02-6", **ctx}]},
+                           reg)["evaluations"][0]
+    alias = evaluate_formula({"ingredients": [{"ingredient": "Cyclopentasiloxane", **ctx}]},
+                             reg)["evaluations"][0]
+    assert cas["entry70"]["state"] == "applicable_exceeds"
+    assert alias["entry70"]["state"] == "applicable_exceeds"
+    assert cas["entry70"]["substance_short"] == "D5"
+    assert alias["entry70"]["substance_short"] == "D5"
+    # Basis gating: a raw-material basis must NOT produce a comparison.
+    raw = evaluate_formula({"ingredients": [
+        {"ingredient": "541-02-6", "percent": "0.5", "unit": "%",
+         "basis": "raw_material", "product_type": "wash-off",
+         "assessment_date": "2028-01-01"}]}, reg)["evaluations"][0]
+    assert raw["entry70"]["state"] == "missing_context"
+    # ready_for_use=false is contradictory to the marketed basis.
+    rf = evaluate_formula({"ingredients": [
+        {"ingredient": "541-02-6", "percent": "0.5", "unit": "%",
+         "basis": "ready_for_use", "product_type": "wash-off",
+         "ready_for_use": False, "assessment_date": "2028-01-01"}]},
+        reg)["evaluations"][0]
+    assert rf["entry70"]["state"] == "missing_context"
 
 
 def test_csv_emits_unknown_row_no_rules():
@@ -586,3 +700,51 @@ def test_github_linked_evidence_distinguished_from_direct():
     gh = render(r, "github")
     # Direct rule annotated; resolution type present.
     assert "direct" not in gh.lower() or "restricted" in gh.lower()
+
+
+# ---------------------------------------------------------------------------
+# Part D: excluded coverage (ECHA deferral) must reach every human report.
+# ---------------------------------------------------------------------------
+def _real_snapshot_registry():
+    """Load the real processed snapshot, or skip when absent."""
+    sqlite = PROCESSED / "eu_reg_lists.sqlite"
+    if not sqlite.exists():
+        pytest.skip("real processed snapshot not present")
+    return erl.load(sqlite)
+
+
+def _report_with_exclusions():
+    reg = _real_snapshot_registry()
+    return evaluate_formula({"ingredients": [
+        {"ingredient": "Benzene", "percent": "1", "unit": "%"}], }, reg)
+
+
+def test_formula_report_coverage_names_exclusions():
+    r = _report_with_exclusions()
+    cov = r["coverage"]
+    assert cov["not_included"] == ["echa-annex-xiv", "echa-annex-xvii", "echa-svhc"]
+    assert "echa-svhc" not in cov["available"]
+    assert "echa-svhc" not in cov["missing"]
+
+
+def test_text_renderer_names_exclusions():
+    r = _report_with_exclusions()
+    text = render(r, "text")
+    assert "echa-svhc" in text
+    assert "not_included" in text.lower()
+
+
+def test_html_renderer_names_exclusions():
+    r = _report_with_exclusions()
+    html_text = render(r, "html")
+    assert "echa-svhc" in html_text
+    assert "not_included" in html_text
+
+
+def test_json_and_csv_keep_exclusions():
+    import json as _json
+    r = _report_with_exclusions()
+    js = _json.loads(render(r, "json"))
+    assert js["coverage"]["not_included"] == ["echa-annex-xiv", "echa-annex-xvii", "echa-svhc"]
+    csv_text = render(r, "csv")
+    assert "echa-svhc" in csv_text

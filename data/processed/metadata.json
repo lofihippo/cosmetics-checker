@@ -1,12 +1,12 @@
 {
   "title": "EU regulatory substance registry -- Phase 1 normalized",
   "version": "0.2.0",
-  "data_updated_at": "2026-10-10T02:31:39.763031+00:00",
-  "content_hash": "b756a7b3acad418a9ceb273e2dac4336420d374bf6fcaefccaa73eb10d107bbd",
+  "data_updated_at": "2026-10-14T07:32:13.087198+00:00",
+  "content_hash": "5145f70e0ece5cccbab4ac24ef899214e74b32c89a1095dac9d9d81a3492c469",
   "content_hash_version": "3",
-  "count_substances": 2375,
+  "count_substances": 2376,
   "count_verified_rules": 2298,
-  "count_identity_only": 77,
+  "count_identity_only": 78,
   "count_quarantined": 2,
   "source_validation_failures": [],
   "reconcile": {
@@ -8900,6 +8900,47 @@
       "fetched": true,
       "accepted": false,
       "retrieval_error": "ValidationError"
+    },
+    "reach-annex-xvii-entry70": {
+      "kind": "reach-legal-act",
+      "files": {
+        "OJ_L_202401328_EN.pdf": {
+          "sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966",
+          "byte_len": 488977
+        },
+        "entry70-mapping.json": {
+          "sha256": "db8875250b58f5889d79853f5396794684238faae2f5e6c1f4472df6a8853c82",
+          "byte_len": 253
+        }
+      },
+      "present": true,
+      "fetched": true,
+      "accepted": true,
+      "retrieval_error": null,
+      "mapping": {
+        "mapping_version": 1,
+        "document_sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966",
+        "supported_substances": [
+          "D4",
+          "D5",
+          "D6"
+        ],
+        "supported_branches": [
+          "washoff_cosmetic",
+          "other_cosmetic"
+        ],
+        "document_kind": "amending_act",
+        "locators": {
+          "paragraph_1": "Annex page 5, paragraph 1",
+          "paragraph_3a": "Annex page 5, paragraph 3(a)",
+          "paragraph_3b": "Annex page 5, paragraph 3(b)",
+          "paragraph_3c": "Annex page 5, paragraph 6 (devices)",
+          "paragraph_6": "Annex page 6, paragraph 6 (residues)"
+        }
+      },
+      "mapping_schema_version": 1,
+      "mapping_content_hash": "390f4dcb231989d002f3cc6d4785c06494cdfd077b49bba99824faaaac778766",
+      "source_is_active": true
     }
   },
   "snapshot": {
@@ -9004,6 +9045,47 @@
       "fetched": true,
       "accepted": false,
       "retrieval_error": "ValidationError"
+    },
+    "reach-annex-xvii-entry70": {
+      "kind": "reach-legal-act",
+      "files": {
+        "OJ_L_202401328_EN.pdf": {
+          "sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966",
+          "byte_len": 488977
+        },
+        "entry70-mapping.json": {
+          "sha256": "db8875250b58f5889d79853f5396794684238faae2f5e6c1f4472df6a8853c82",
+          "byte_len": 253
+        }
+      },
+      "present": true,
+      "fetched": true,
+      "accepted": true,
+      "retrieval_error": null,
+      "mapping": {
+        "mapping_version": 1,
+        "document_sha256": "2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966",
+        "supported_substances": [
+          "D4",
+          "D5",
+          "D6"
+        ],
+        "supported_branches": [
+          "washoff_cosmetic",
+          "other_cosmetic"
+        ],
+        "document_kind": "amending_act",
+        "locators": {
+          "paragraph_1": "Annex page 5, paragraph 1",
+          "paragraph_3a": "Annex page 5, paragraph 3(a)",
+          "paragraph_3b": "Annex page 5, paragraph 3(b)",
+          "paragraph_3c": "Annex page 5, paragraph 6 (devices)",
+          "paragraph_6": "Annex page 6, paragraph 6 (residues)"
+        }
+      },
+      "mapping_schema_version": 1,
+      "mapping_content_hash": "390f4dcb231989d002f3cc6d4785c06494cdfd077b49bba99824faaaac778766",
+      "source_is_active": true
     }
   }
 }

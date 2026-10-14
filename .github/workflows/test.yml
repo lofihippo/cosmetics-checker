@@ -10,19 +10,24 @@ name: Test / quality
 # installation is a hard failure, never a successful skip.
 #
 # Details:
-#   * Data/dependencies are installed from the repo (editable source packages +
-#     requirements-dev.txt). No live official/provider requests are made: the OCR
-#     vendor assets are pinned in-repo and the scanner provider adapter is never
-#     called by the quality stages (the frontend/browser tests stub the provider
-#     with deterministic fixtures / in-memory registries). The regulatory
-#     snapshot fixture is built in-memory by the test harness.
+#   * ONE interpreter/environment strategy: setup-python's active interpreter is
+#     used for editing + tooling (`python -m pip`, `make`, the quality gate). No
+#     separate .venv is created; `make` uses the active `python3` in its PATH.
+#   * Direct test dependencies are declared explicitly (requirements-dev.txt:
+#     pytest, coverage, ruff, mypy, playwright, httpx, PyYAML) AND the
+#     `browser-test`/`dev` extras of the packages are installed, so nothing relies
+#     on a developer's preinstalled or incidental transitive module.
+#   * Playwright's Python package is installed BEFORE the browser binaries, and
+#     a real Chrome (channel="chrome") is installed explicitly.
 #   * Browser/Docker prerequisites are installed explicitly and are NOT cached
 #     into the repo. The Playwright (Chromium via system Chrome) and Docker
 #     integration tests use deterministic in-process fixtures; they do not call
-#     the network.
+#     the network. The Docker CLI/daemon is REQUIRED for the container
+#     integration job (a missing daemon fails preflight, it does not skip).
 #   * No dependence on gitignored `.local-reference` artifacts or a developer's
 #     editable install: every generated input/report is written to a run-owned
-#     temp dir.
+#     temp dir. The quality gate writes a JSON stage manifest + per-stage logs
+#     to the `QUALITY_OUT` dir, which the workflow uploads verbatim.
 #
 # This workflow does NOT publish, dispatch, deploy or fetch official exports.
 # Minimal read-only permissions; no secrets.
@@ -34,6 +39,9 @@ on:
 
 permissions:
   contents: read
+
+# No top-level `env`: the `runner` context is unavailable there. QUALITY_OUT is
+# set at step scope (`env:`/`with:`) where the context IS available.
 
 jobs:
   quality:
@@ -53,42 +61,82 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
+      # One interpreter strategy: use setup-python's active interpreter for all
+      # edits, installs and subprocesses (make uses `python3` on PATH).
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
-          # Editable-install the source packages so the CLI entry points resolve.
-          python -m pip install --quiet -e packages/eu-reg-lists
-          python -m pip install --quiet -e packages/eu-ingredient-linter
-          python -m pip install --quiet -e packages/eu-reg-api
-          python -m pip install --quiet -e packages/scan-to-check
+          # Package dev/browser-test extras declare the direct test deps.
+          python -m pip install --quiet -e "packages/eu-reg-lists[dev]"
+          python -m pip install --quiet -e "packages/eu-ingredient-linter[dev]"
+          python -m pip install --quiet -e "packages/eu-reg-api[dev,browser-test]"
+          python -m pip install --quiet -e "packages/scan-to-check[dev]"
+          # Verify the active tooling resolves to the installed interpreter.
+          python -c "import pytest, coverage, ruff, mypy, playwright, httpx, yaml"
 
-      # The API/playground and PWA/scan browser tests drive a real browser via
-      # playwright.chromium.launch(channel="chrome"). Install a real Chrome
-      # explicitly (Playwright's own "chromium" build is NOT channel="chrome"),
-      # plus the shared-library prerequisites, so the matrix does not depend on
-      # a preinstalled on-host browser.
+      # Playwright's Python package is installed above; NOW install the browser
+      # binaries + shared-library prerequisites. A real Chrome is used
+      # (channel="chrome"), so install it explicitly (Playwright's own "chromium"
+      # build is NOT channel="chrome").
       - name: Install browser (Chrome) prerequisites
         run: |
           python -m playwright install --with-deps chrome
 
-      # The reusable Action integration tests exercise a real container build
-      # when a Docker daemon is present. The ubuntu-latest runner ships Docker,
-      # and the tests run `--network=none` so no regulatory network fetch can
-      # occur; they fall back to the direct entrypoint path when Docker is
-      # unavailable. This sets up the runner explicitly rather than assuming it.
-      - name: Ensure Docker CLI/daemon prerequisites
-        run: |
-          docker --version
-          docker info >/dev/null 2>&1 || echo "warning: Docker daemon unavailable; integration tests fall back to direct entrypoint"
-
       - run: make quality
+        env:
+          QUALITY_OUT: ${{ runner.temp }}/quality-check
+          PY: python3
 
-      - name: Upload coverage evidence
+      - name: Upload quality evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: quality-evidence-py${{ matrix.python-version }}
-          path: "${{ runner.temp }}/quality-check-*/"
-          if-no-files-found: ignore
+          path: ${{ runner.temp }}/quality-check
+          if-no-files-found: error
           retention-days: 7
+
+  # Container integration is a REQUIRED, separate job. It exercises the reusable
+  # Action against a real Docker build when a daemon is present. A missing Docker
+  # daemon FAILS preflight (it never silently skips the container stage).
+  container-integration:
+    name: container-integration (py3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          # The direct entrypoint tests (`eu-ingredient-linter` CLI) require the
+          # installed source packages, not only requirements-dev.txt. Install the
+          # editable packages so the CLI and library are on the active
+          # interpreter's PATH for both the pytest suite and any subprocess it
+          # spawns.
+          python -m pip install --quiet -e "packages/eu-reg-lists"
+          python -m pip install --quiet -e "packages/eu-ingredient-linter"
+          python -m pip install --quiet -e "packages/eu-reg-api"
+          python -m pip install --quiet -e "packages/scan-to-check"
+
+      - name: Verify Docker daemon is available (required)
+        run: |
+          docker --version
+          if ! docker info >/dev/null 2>&1; then
+            echo "::error title=EU Ingredient Linter::Docker daemon is unavailable; the required container-integration job cannot run."
+            exit 2
+          fi
+
+      # Run the Action container-integration tests. These use deterministic
+      # in-process fixtures and --network=none (no regulatory network fetch).
+      - run: python -m pytest tests/test_action_integration.py tests/test_action_acquisition.py -q -p no:cacheprovider
+        env:
+          PY: python3

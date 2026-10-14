@@ -32,12 +32,10 @@ ACTION = ROOT / ".github/actions/eu-ingredient-linter"
 SNP = ROOT / "data" / "processed"
 HAS_REAL = (SNP / "eu_reg_lists.sqlite").exists()
 
-_PYTHON_DIR = str((ROOT / ".venv" / "bin").resolve()) if (ROOT / ".venv" / "bin").exists() else "/opt/homebrew/bin"
-
-
 def _env():
+    # Use the ACTIVE interpreter's directory, never a hardcoded venv/Homebrew path.
     e = {**os.environ, "EU_REP_ROOT": str(ROOT)}
-    e["PATH"] = f"{_PYTHON_DIR}:{e.get('PATH', '')}"
+    e["PATH"] = f"{Path(sys.executable).parent}:{e.get('PATH', '')}"
     e["PYTHONPATH"] = str(ROOT / "packages/eu-reg-lists")
     return e
 
@@ -58,7 +56,6 @@ def test_action_inputs_live_only_in_env_not_run_body():
         assert ref in run
 
 
-@pytest.mark.skipif(not HAS_REAL, reason="no processed snapshot")
 def test_injection_value_stays_data_no_marker(tmp_path):
     """A `$(...)`/backtick value passed via env is data and does not execute."""
     data = yaml.safe_load((ACTION / "action.yml").read_text())

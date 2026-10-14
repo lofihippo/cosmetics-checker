@@ -26,6 +26,7 @@ files = [
     "packages/scan-to-check/scan_to_check",
     "tools/quality_gate.py",
     "examples/acceptance_demo.py",
+    "deploy/build_deployment.py",
 ]
 # The legacy prototype/data scripts carry long-standing typing debt that is
 # intentionally outside this bounded cleanup. Do NOT silence via broad ignores;

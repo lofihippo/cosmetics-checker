@@ -1,8 +1,9 @@
 """Command-line interface for eu-ingredient-linter.
 
 Reads a single label (``--label``) or a batch file (``--batch``, one label per
-line) and prints a JSON report. Coverage (Annex II available, Annex III–VI and
-ECHA missing) and official Reference Numbers are surfaced.
+line) and prints a JSON report. Coverage (Annex II available, Annex III–VI
+missing, ECHA not-included/deferred) and official Reference Numbers are
+surfaced.
 
 Usage::
 
@@ -19,12 +20,12 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from eu_reg_lists import load
+from eu_reg_lists import load, Registry
 
 from . import batch_report, ingredient_report
 
 
-def _registry_from(path: str) -> object:
+def _registry_from(path: str) -> Registry:
     p = Path(path)
     if not p.exists():
         sys.exit(f"registry not found: {p}")
@@ -245,11 +246,17 @@ def _exit_code(report: dict) -> int:
     if "evaluations" in report:
         # Formula: exit 1 when a supported limit was EXCEEDED or an ingredient
         # carries an UNAMBIGUOUS prohibition finding (e.g. a pure Annex II ban
-        # like Benzene).
+        # like Benzene) or a supported REACH Annex XVII entry 70 trigger
+        # (``applicable_exceeds``). Missing context / unsupported use /
+        # transition states are deliberately NOT established triggers and stay
+        # exit 0 (unresolved), distinct from a supported established trigger.
         for e in report["evaluations"]:
             if e["verdict"] == "exceeds_supported_limit":
                 return 1
             if e.get("prohibition_finding") == "unambiguous":
+                return 1
+            e70 = e.get("entry70") or {}
+            if e70.get("state") == "applicable_exceeds":
                 return 1
         return 0
     if "items" in report:
@@ -275,6 +282,8 @@ def _print_human(report: dict) -> None:
         print(f"Coverage: Annex II present = {cov.get('has_annex_ii')}")
         print(f"  available: {', '.join(cov.get('available', [])) or '(none)'}")
         print(f"  missing:   {', '.join(cov.get('missing', [])) or '(none)'}")
+        print(f"  not_included (deliberately deferred): "
+              f"{', '.join(cov.get('not_included', [])) or '(none)'}")
     dt = report.get("data_updated_at")
     if dt:
         print(f"data_updated_at: {dt}")
@@ -314,12 +323,21 @@ def _print_finding(r: dict, indent: str = "  ") -> None:
     conditions. The single ``r['status']`` (headline strongest) is only a summary
     label on the ingredient line; it never substitutes for per-rule status.
     """
-    flagged = r["status"] in ("banned", "restricted", "allowed_with_conditions")
+    flagged = r["status"] in ("banned", "restricted", "listed", "allowed_with_conditions")
     # A grouped member may have no OWN rules yet a linked group rule still flags
     # it; reflect that in the marker.
     linked = r.get("linked_rules") or []
-    if not flagged and any(lr["status"] in ("banned", "restricted", "allowed_with_conditions")
+    if not flagged and any(lr["status"] in ("banned", "restricted", "listed", "allowed_with_conditions")
                            for lr in linked):
+        flagged = True
+    # A retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6) finding is
+    # a restriction finding (identified-but-unevaluated on a label-only check).
+    # It is flagged but NEVER a category violation, so it is not merged into the
+    # CosIng rule blocks below (which are the only things that count as a
+    # definitive prohibition).
+    e70 = r.get("entry70") or {}
+    if not flagged and e70 and e70.get("state") not in ("not_entry70_substance",
+                                                        "source_not_active"):
         flagged = True
     marker = "FLAG" if flagged else "    "
     line = f"{indent}{marker} {r['ingredient']:<32} det={r['determination']}"
@@ -333,7 +351,8 @@ def _print_finding(r: dict, indent: str = "  ") -> None:
               f"annex={m.get('annex')} ref={m.get('official_reference')} "
               f"<{m.get('source_kind')}>{m.get('row_reference')}")
     blocks = rules + linked
-    if not blocks:
+    if not blocks and not (e70 and e70.get("state") not in (
+            "not_entry70_substance", "source_not_active")):
         return
     for rule in blocks:
         raw = rule.get("raw") or {}
@@ -374,6 +393,45 @@ def _print_finding(r: dict, indent: str = "  ") -> None:
             cond = str(rule["conditions"]).replace("\n", " ").strip()
             if cond:
                 print(f"{block_indent}      Conditions: {cond}")
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6), rendered as its own
+    # block (identified-but-unevaluated on a label-only check). Never a
+    # category violation by itself and never replaces the CosIng findings above.
+    e70 = r.get("entry70")
+    if e70:
+        eindent = indent + "  "
+        print(f"{eindent}[entry70] annex=Annex XVII entry=70 "
+              f"substance={e70.get('substance_short')} state={e70.get('state')}")
+        if e70.get("reason"):
+            print(f"{eindent}      {e70['reason']}")
+        if e70.get("threshold"):
+            print(f"{eindent}      market_threshold={e70['threshold']} "
+                  f"operator={e70.get('operator')}")
+        if e70.get("branch"):
+            print(f"{eindent}      branch={e70.get('branch')}")
+        if e70.get("effective_date"):
+            print(f"{eindent}      effective_date={e70['effective_date']}")
+        if e70.get("assessment_date"):
+            print(f"{eindent}      assessment_date={e70['assessment_date']}")
+        if e70.get("submitted_percent"):
+            print(f"{eindent}      submitted_percent={e70['submitted_percent']}")
+        if e70.get("product_type"):
+            print(f"{eindent}      submitted_product_type={e70['product_type']}")
+        reg = (e70.get("source") or {}).get("regulation")
+        if reg:
+            print(f"{eindent}      regulation={reg} celex={ (e70.get('source') or {}).get('celex') }")
+        su = (e70.get("source") or {}).get("source_url")
+        if su:
+            print(f"{eindent}      source_url={su}")
+        sha = e70.get("document_sha256") or (e70.get("source") or {}).get("document_sha256")
+        if sha:
+            print(f"{eindent}      document_sha256={sha}")
+        loc = (e70.get("provenance") or {}).get("row_reference")
+        if loc:
+            print(f"{eindent}      locator={loc}")
+        if e70.get("data_updated_at"):
+            print(f"{eindent}      data_updated_at={e70['data_updated_at']}")
+        for u in e70.get("unresolved_requirements") or []:
+            print(f"{eindent}      unresolved: {u}")
 
 
 def _print_formula_evaluation(e: dict, indent: str = "  ") -> None:
@@ -417,6 +475,33 @@ def _print_formula_evaluation(e: dict, indent: str = "  ") -> None:
         if off is not None:
             line += f" official_reference={off}"
         print(line)
+    # Source-bound REACH Annex XVII entry 70 (D4/D5/D6), rendered with full
+    # citation and applicability (never conflated with the CosIng rules).
+    e70 = e.get("entry70")
+    if e70:
+        s = e70.get("source") or {}
+        p = e70.get("provenance") or {}
+        print(f"{indent}    [entry70] state={e70.get('state')} "
+              f"substance={e70.get('substance_short')} branch={e70.get('branch') or 'n/a'}")
+        if e70.get("reason"):
+            print(f"{indent}        {e70['reason']}")
+        print(f"{indent}        threshold={e70.get('threshold')} "
+              f"operator={e70.get('operator')} "
+              f"effective={e70.get('effective_date') or 'n/a'} "
+              f"assessed={e70.get('assessment_date') or 'n/a'} "
+              f"submitted={e70.get('submitted_percent') or 'n/a'}% "
+              f"product={e70.get('product_type') or 'n/a'}")
+        print(f"{indent}        regulation={s.get('regulation')} celex={s.get('celex')}")
+        if s.get("source_url"):
+            print(f"{indent}        source_url={s['source_url']}")
+        if e70.get("document_sha256") or s.get("document_sha256"):
+            print(f"{indent}        document_sha256={e70.get('document_sha256') or s.get('document_sha256')}")
+        if p.get("row_reference"):
+            print(f"{indent}        locator={p.get('row_reference')}")
+        if e70.get("data_updated_at"):
+            print(f"{indent}        data_updated_at={e70['data_updated_at']}")
+        for u in e70.get("unresolved_requirements") or []:
+            print(f"{indent}        unresolved: {u}")
     for req in e.get("unresolved_requirements") or []:
         print(f"{indent}    unresolved: {req}")
     for reason in e.get("reasons") or []:

@@ -9,6 +9,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import List
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "data" / "scripts"
@@ -243,7 +244,9 @@ def test_echa_svhc_parser():
               "Boric acid,10043-35-3,233-139-2,Reprotoxic,2010-01-01\n")
     recs = parse_echa_csv(sample, "svhc", "https://echa")
     by_name = {r["name"]: r for r in recs}
-    assert by_name["Bisphenol A"]["status"] == "restricted"
+    # SVHC Candidate List membership is listing information requiring contextual
+    # review, NOT a numeric restriction or a prohibition. Status is ``listed``.
+    assert by_name["Bisphenol A"]["status"] == "listed"
     assert by_name["Bisphenol A"]["annex"] == "SVHC"
     assert by_name["Bisphenol A"]["conditions"] == "CMR"
     assert by_name["Boric acid"]["annex"] == "SVHC"
@@ -280,7 +283,8 @@ def test_echa_export_file_parsing_tsv(tmp_path):
     p.write_text(sample)
     recs = parse_echa_file(p, "svhc", "https://echa")
     assert recs and recs[0]["name"] == "Formaldehyde"
-    assert recs[0]["status"] == "restricted"
+    # SVHC Candidate List membership is listing information, not a restriction.
+    assert recs[0]["status"] == "listed"
 
 
 # ---------------------------------------------------------------------------
@@ -940,20 +944,23 @@ def test_echa_distinct_restrictions_retained():
     assert conditions == ["Condition A", "Condition B"]
 
 
-def test_normalize_echa_source_url_source_specific(tmp_path):
+def test_normalize_skips_disabled_echa_source(tmp_path):
+    """ECHA sources are deliberately disabled (AGENTS.md #9). A file placed in
+    an ECHA raw dir with an accepted manifest must still be SKIPPED — ECHA data
+    is never ingested into the release snapshot."""
     _write_export(tmp_path, "echa-svhc", "svhc.csv",
                   "Substance name,CAS number,EC number,Reason for inclusion\n"
                   "Boric acid,10043-35-3,233-139-2,Reprotoxic\n")
     meta, subs, _out = _build_report(tmp_path)
-    boric = [s for s in subs if s["name"] == "Boric acid"][0]
-    assert boric["determination"] == "restricted"
-    rule = boric["rules"][0]
-    assert "echa" in rule["source_url"]  # source-specific URL, not CosIng homepage
-    assert rule["raw"]["accepted"] is True
-    assert rule["raw"]["row_reference"].startswith("svhc.csv#1")
+    # No SVHC rule is ingested; only identity-only curated entries may remain.
+    assert all(s["determination"] != "listed" for s in subs)
+    assert meta["count_verified_rules"] == 0
+    assert all(not any(r["annex"] == "SVHC" for r in s["rules"]) for s in subs)
 
 
-def test_cosing_and_echa_use_distinct_urls(tmp_path):
+def test_cosing_and_echa_resolve_with_cosing_only(tmp_path):
+    """A CosIng export is ingested; an ECHA source is skipped as disabled, so a
+    CosIng-only snapshot never mixes ECHA evidence into the release."""
     _write_export(tmp_path, "cosing-annex-ii", "COSING_Annex_II_v2.txt",
                   _cosing_export("II", ['1,"Zinc pyrithione",13463-41-7,236-671-3,"(EU) 2021/1902",,,,,,15/10/2010']))
     _write_export(tmp_path, "echa-svhc", "b.csv",
@@ -961,9 +968,9 @@ def test_cosing_and_echa_use_distinct_urls(tmp_path):
                   "Boric acid,10043-35-3,233-139-2,Reprotoxic\n")
     meta, subs, _out = _build_report(tmp_path)
     urls = {s["rules"][0]["source_url"] for s in subs if s["rules"]}
-    assert len(urls) == 2
-    assert any("echa" in u for u in urls)
-    assert any("cosing" in u or "ec.europa" in u for u in urls)
+    assert all("echa" not in u for u in urls)  # no ECHA rule ingested
+    assert any("ec.europa" in u or "cosing" in u for u in urls)  # CosIng present
+    assert meta["count_verified_rules"] == 1
 
 
 # ---------------------------------------------------------------------------

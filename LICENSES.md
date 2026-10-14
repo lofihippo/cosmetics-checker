@@ -59,8 +59,14 @@ each phase as the pipeline ingests official exports (Phase 1 onwards).
   (Restriction) packages.
 - **License:** ECHA's own terms of use. Must cite ECHA and follow its
   reproduction policy.
-- **Status:** Used via official package downloads / export files. Systematic
-  scraping is prohibited and is **not** used in this project.
+- **Status:** **NOT included in this release.** ECHA acquisition/ingestion is
+  deliberately deferred (per the project scope decision): we do not accept
+  ECHA's portal terms and no ECHA export has been downloaded or ingested.
+  ECHA-derived data is excluded from the shipped snapshot and the curated
+  Phase-0 prototype; the reuse terms are recorded here only so they are known
+  if ECHA coverage is later added. ECHA coverage is surfaced as a coverage gap /
+  "not included" — never as a clean result. Systematic scraping is prohibited
+  and is **not** used in this project.
 
 ### Open Beauty Facts / Open Food Facts
 
@@ -75,6 +81,28 @@ each phase as the pipeline ingests official exports (Phase 1 onwards).
 - **Source:** EUR-Lex (EU law) — E-number authorisation details used for
   "food vs cosmetic" gaps.
 - **License:** EU public-sector reuse; requires attribution.
+
+### EUR-Lex / Publications Office (Annex XVII & XIV — REACH)
+
+- **Source:** EUR-Lex consolidated REACH Regulation (EC) No 1907/2006
+  (Annex XVII restrictions; Annex XIV authorisation) — an independent primary
+  source, distinct from ECHA-derived data.
+- **License:** EU public-sector reuse; requires attribution.
+- **Status (updated 2026-10-14):** **Partial, source-bound coverage.** An
+  independent public official-government-hosted OJ PDF of Commission Regulation
+  (EU) 2024/1328 (CELEX 32024R1328) was retained and verified
+  (SHA-256 `2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966`).
+  That amending act implements REACH Annex XVII **entry 70** (D4/D5/D6). Entry 70
+  is implemented as a **source-bound mapping** gated on an accepted
+  source/mapping record in the snapshot `verified_sources`; it is not a full
+  Annex XVII or REACH coverage, and it is **not** an ECHA export. The retained
+  document is the amending act; the consolidated entry-70 text must be
+  re-verified for later amendments/corrigenda before a subsequent refresh
+  (recorded as a consolidation-check obligation). No ECHA portal terms were
+  accepted and no ECHA export was acquired.
+- **Annex XVII / XIV beyond entry 70:** remain `not_included` / unsupported and
+  are never presented as available or clean. No speculative Annex XVII parser was
+  built. ECHA acquisition/ingestion remains deliberately deferred.
 
 ### US FDA data (optional geographic overlays)
 

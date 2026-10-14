@@ -127,23 +127,27 @@ def _combine_conditions(row: Dict[str, Any], cols: Dict[str, Optional[str]]) -> 
     verbatim from the source; we never invent or parse concentration values.
     """
     out: List[Dict[str, Any]] = []
-    if cols.get("product_types"):
-        val = (row.get(cols["product_types"]) or "").strip()
+    product_types = cols.get("product_types")
+    if product_types:
+        val = (row.get(product_types) or "").strip()
         if val:
             out.append({"field": "product_types", "label": "Product type, body parts",
                         "value": val})
-    if cols.get("max_concentration"):
-        val = (row.get(cols["max_concentration"]) or "").strip()
+    max_concentration = cols.get("max_concentration")
+    if max_concentration:
+        val = (row.get(max_concentration) or "").strip()
         if val:
             out.append({"field": "max_concentration",
                         "label": "Maximum concentration in ready for use preparation",
                         "value": val})
-    if cols.get("other"):
-        val = (row.get(cols["other"]) or "").strip()
+    other = cols.get("other")
+    if other:
+        val = (row.get(other) or "").strip()
         if val:
             out.append({"field": "other", "label": "Other", "value": val})
-    if cols.get("warnings"):
-        val = (row.get(cols["warnings"]) or "").strip()
+    warnings = cols.get("warnings")
+    if warnings:
+        val = (row.get(warnings) or "").strip()
         if val:
             out.append({"field": "warnings",
                         "label": "Wording of conditions of use and warnings",
@@ -226,7 +230,10 @@ def parse_cosing_csv(text: str, source_url: str,
             continue
         # Reference Number is alphanumeric (e.g. ``2a``), not an int; keep it as
         # a string so nothing is lost/coerced.
-        ref_no = (record.get(cols["reference_number"]) or "").strip() or None
+        ref_no_col = cols["reference_number"]
+        ref_no = None
+        if ref_no_col:
+            ref_no = (record.get(ref_no_col) or "").strip() or None
         conditions = _combine_conditions(record, cols)
         # The Colour Index identifier (Annex IV colorants); kept as identity
         # evidence, never inferred from a name substring.

@@ -11,8 +11,10 @@ by `eu-reg-lists`.
 > **conditional positive lists**: their presence is evidence of a source-list
 > entry, **not** a clean/compliant result — a substance present only in a
 > positive list is still a **flagged** (not clean) finding. The ECHA lists
-> (SVHC, Annex XIV, Annex XVII) are **not yet covered** and are reported as
-> MISSING. Their absence is a **coverage gap, never a clean result**.
+> (SVHC, Annex XIV, Annex XVII) are **deliberately not included** in this
+> release (acquisition deferred/disabled); they are reported as
+> NOT-included. Their absence is a **coverage gap / scope exclusion, never a
+> clean result**.
 
 ## Honesty rules (AGENTS.md)
 
@@ -71,7 +73,8 @@ python -m eu_ingredient_linter \
 
 A single structured file represents ONE formula: one ingredient record per row,
 with a required `ingredient` column and optional `percent`, `unit`, `basis`,
-`product_type`, `body_area`, `professional_use` and `ready_for_use` columns:
+`product_type`, `body_area`, `professional_use`, `ready_for_use` and
+`assessment_date` columns:
 
 ```bash
 python -m eu_ingredient_linter \
@@ -97,6 +100,7 @@ Accepted file schema (`ingredient.csv` / `ingredient.tsv`):
 | `body_area` | no | Body-area context. Blank = absent. |
 | `professional_use` | no | `true`/`false` (also `yes`/`no`). Blank = absent; any other nonempty text is rejected. |
 | `ready_for_use` | no | `true`/`false` (also `yes`/`no`). Blank = absent; any other nonempty text is rejected. |
+| `assessment_date` | no | ISO-8601 assessment date (`YYYY-MM-DD`). Blank = absent; a malformed value is rejected. Required for an effective/transition-date boundary. |
 
 Conventions:
 

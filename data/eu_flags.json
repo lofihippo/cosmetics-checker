@@ -1,2000 +1,1988 @@
 {
-  "meta": {
-    "title": "EU cosmetic substance flags -- curated seed (Phase 0)",
-    "version": "0.2.0",
-    "build_time": "2026-10-07T18:59:04Z",
-    "data_updated_at": "2026-10-07T18:59:04Z",
-    "count_substances": 106,
-    "count_verified_rules": 55,
-    "count_identity_only": 51,
-    "sources": {
-      "cosmetic": {
-        "name": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-        "source_updated_at": null
-      },
-      "food": {
-        "name": "Regulation (EC) No 1333/2008 -- food additives",
-        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-        "source_updated_at": null
-      },
-      "svhc": {
-        "name": "ECHA SVHC Candidate List",
-        "url": "https://echa.europa.eu/candidate-list-table",
-        "source_updated_at": null
-      }
-    },
-    "disclaimer": "Regulatory information, not legal advice. A 'clean' result means no EU ban/restriction was triggered for the substances that could be resolved in this curated dataset. Absence of a substance, or an identity-only substance with determination 'unknown', is NOT 'clean'."
+ "meta": {
+  "title": "EU cosmetic substance flags -- curated seed (Phase 0)",
+  "version": "0.2.0",
+  "build_time": "2026-10-12T19:36:54Z",
+  "data_updated_at": "2026-10-12T19:36:54Z",
+  "count_substances": 107,
+  "count_verified_rules": 53,
+  "count_identity_only": 54,
+  "sources": {
+   "cosmetic": {
+    "name": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+    "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+    "source_updated_at": null
+   },
+   "food": {
+    "name": "Regulation (EC) No 1333/2008 -- food additives",
+    "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+    "source_updated_at": null
+   }
   },
-  "substances": [
-    {
-      "id": "zinc-pyrithione",
-      "name": "Zinc pyrithione",
-      "aliases": [
-        "zinc pyrithione",
-        "pyrithione zinc",
-        "zpt",
-        "zinc omadine"
-      ],
-      "cas": "13463-41-7",
-      "ec": "236-671-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Prohibited in cosmetic products under Annex II (previously restricted; banned entry effective 2022).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "lilial",
-      "name": "Lilial",
-      "aliases": [
-        "lilial",
-        "lily aldehyde",
-        "butylphenyl methylpropional",
-        "lyral",
-        "bmhca"
-      ],
-      "cas": "80-54-6",
-      "ec": "201-289-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Banned (added to Annex II by Regulation (EU) 2021/1902, effective 2022).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "isobutylparaben",
-      "name": "Isobutylparaben",
-      "aliases": [
-        "isobutyl 4-hydroxybenzoate",
-        "isobutyl p-hydroxybenzoate"
-      ],
-      "cas": "4247-02-3",
-      "ec": "224-208-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Banned (Annex II).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "isopropylparaben",
-      "name": "Isopropylparaben",
-      "aliases": [
-        "isopropyl 4-hydroxybenzoate",
-        "isopropyl p-hydroxybenzoate"
-      ],
-      "cas": "4191-73-5",
-      "ec": "224-069-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Banned (Annex II).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "benzylparaben",
-      "name": "Benzylparaben",
-      "aliases": [
-        "benzyl 4-hydroxybenzoate",
-        "benzyl p-hydroxybenzoate"
-      ],
-      "cas": "94-18-8",
-      "ec": "202-311-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Banned (Annex II).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "hydroquinone",
-      "name": "Hydroquinone",
-      "aliases": [],
-      "cas": "123-31-9",
-      "ec": "204-617-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Prohibited in cosmetics (Annex II); also a skin-bleaching agent subject to separate rules.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "1,4-dioxane",
-      "name": "1,4-Dioxane",
-      "aliases": [],
-      "cas": "123-91-1",
-      "ec": "204-661-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Prohibited in cosmetics (Annex II); also listed as a CMR / SVHC.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "acrylamide",
-      "name": "Acrylamide",
-      "aliases": [],
-      "cas": "79-06-1",
-      "ec": "201-173-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "banned",
-      "rules": [
-        {
-          "status": "banned",
-          "annex": "Annex II",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Prohibited in cosmetics (Annex II); CMR category 1B.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "formaldehyde",
-      "name": "Formaldehyde",
-      "aliases": [
-        "formaldehyde",
-        "methanal",
-        "formalin"
-      ],
-      "cas": "50-00-0",
-      "ec": "200-001-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Restricted: 0.05% in nail products, 0.1% in oral products; free formaldehyde limits apply; must carry warning.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "dibutyl-phthalate",
-      "name": "Dibutyl phthalate",
-      "aliases": [
-        "dibutyl phthalate",
-        "dbp"
-      ],
-      "cas": "84-74-2",
-      "ec": "201-557-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Restricted use in cosmetics; also a CMR under CLP.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "boric-acid",
-      "name": "Boric acid",
-      "aliases": [
-        "boric acid"
-      ],
-      "cas": "10043-35-3",
-      "ec": "233-139-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Restricted to talc/concentration limits; banned in certain leave-on products.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "bha",
-      "name": "BHA",
-      "aliases": [
-        "bha",
-        "butylated hydroxyanisole",
-        "e320"
-      ],
-      "cas": "25013-16-5",
-      "ec": "246-563-8",
-      "e_number": "E320",
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Antioxidant; restricted cap and authorisation limits.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "butylparaben",
-      "name": "Butylparaben",
-      "aliases": [
-        "butyl 4-hydroxybenzoate",
-        "butyl p-hydroxybenzoate"
-      ],
-      "cas": "94-26-8",
-      "ec": "202-318-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative; banned in leave-on products for the nappy area of children under 3.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "benzyl-alcohol",
-      "name": "Benzyl alcohol",
-      "aliases": [
-        "benzyl alcohol",
-        "phenylmethanol"
-      ],
-      "cas": "100-51-6",
-      "ec": "202-859-9",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Fragrance allergen subject to Annex III labelling and concentration provisions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "methylparaben",
-      "name": "Methylparaben",
-      "aliases": [
-        "methyl 4-hydroxybenzoate",
-        "methyl p-hydroxybenzoate"
-      ],
-      "cas": "99-76-3",
-      "ec": "202-785-7",
-      "e_number": "E218",
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative; max 0.4% (as acid), 0.8% for ester sum.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "propylparaben",
-      "name": "Propylparaben",
-      "aliases": [
-        "propyl 4-hydroxybenzoate",
-        "propyl p-hydroxybenzoate"
-      ],
-      "cas": "94-13-3",
-      "ec": "202-615-1",
-      "e_number": "E216",
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative; banned in leave-on products for the nappy area of children under 3; max 0.4% (as acid), 0.8% ester sum.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "ethylparaben",
-      "name": "Ethylparaben",
-      "aliases": [
-        "ethyl 4-hydroxybenzoate",
-        "ethyl p-hydroxybenzoate"
-      ],
-      "cas": "120-47-8",
-      "ec": "204-399-4",
-      "e_number": "E214",
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative; max 0.4% (as acid), 0.8% ester sum.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "benzoic-acid",
-      "name": "Benzoic acid",
-      "aliases": [
-        "e210"
-      ],
-      "cas": "65-85-0",
-      "ec": "200-618-2",
-      "e_number": "E210",
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        },
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E210; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "sodium-benzoate",
-      "name": "Sodium benzoate",
-      "aliases": [
-        "e211"
-      ],
-      "cas": "532-32-1",
-      "ec": "208-534-8",
-      "e_number": "E211",
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        },
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E211; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "sorbic-acid",
-      "name": "Sorbic acid",
-      "aliases": [
-        "e200"
-      ],
-      "cas": "110-44-1",
-      "ec": "203-768-7",
-      "e_number": "E200",
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        },
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E200; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "potassium-sorbate",
-      "name": "Potassium sorbate",
-      "aliases": [
-        "e202"
-      ],
-      "cas": "24634-61-5",
-      "ec": "246-376-1",
-      "e_number": "E202",
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        },
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E202; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "salicylic-acid",
-      "name": "Salicylic acid",
-      "aliases": [],
-      "cas": "69-72-7",
-      "ec": "200-712-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V); restricted concentration and use.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "phenoxyethanol",
-      "name": "Phenoxyethanol",
-      "aliases": [],
-      "cas": "122-99-6",
-      "ec": "204-589-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "imidazolidinyl-urea",
-      "name": "Imidazolidinyl urea",
-      "aliases": [],
-      "cas": "39236-46-9",
-      "ec": "254-372-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "diazolidinyl-urea",
-      "name": "Diazolidinyl urea",
-      "aliases": [],
-      "cas": "78491-02-8",
-      "ec": "278-928-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "methylisothiazolinone",
-      "name": "Methylisothiazolinone",
-      "aliases": [
-        "mit"
-      ],
-      "cas": "2682-20-4",
-      "ec": "220-239-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V); restricted concentration (0.01% max).",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "methylchloroisothiazolinone",
-      "name": "Methylchloroisothiazolinone",
-      "aliases": [
-        "cmit"
-      ],
-      "cas": "26172-55-4",
-      "ec": "247-500-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V); restricted concentration and use.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "iodopropynyl-butylcarbamate",
-      "name": "Iodopropynyl butylcarbamate",
-      "aliases": [
-        "ipbc"
-      ],
-      "cas": "55406-53-6",
-      "ec": "259-627-5",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex V",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "benzophenone-3",
-      "name": "Benzophenone-3",
-      "aliases": [
-        "oxybenzone",
-        "bp-3"
-      ],
-      "cas": "131-57-7",
-      "ec": "205-031-5",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "benzophenone-4",
-      "name": "Benzophenone-4",
-      "aliases": [
-        "sulisobenzone",
-        "bp-4"
-      ],
-      "cas": "4065-45-6",
-      "ec": "223-772-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "avobenzone",
-      "name": "Avobenzone",
-      "aliases": [
-        "butyl methoxydibenzoylmethane"
-      ],
-      "cas": "70356-09-1",
-      "ec": "274-581-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "octinoxate",
-      "name": "Octinoxate",
-      "aliases": [
-        "ethylhexyl methoxycinnamate",
-        "octyl methoxycinnamate"
-      ],
-      "cas": "5466-77-3",
-      "ec": "226-775-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "octocrylene",
-      "name": "Octocrylene",
-      "aliases": [],
-      "cas": "6197-30-4",
-      "ec": "228-250-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "homosalate",
-      "name": "Homosalate",
-      "aliases": [],
-      "cas": "118-56-9",
-      "ec": "204-260-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "octisalate",
-      "name": "Octisalate",
-      "aliases": [
-        "ethylhexyl salicylate"
-      ],
-      "cas": "118-60-5",
-      "ec": "204-263-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "ensulizole",
-      "name": "Ensulizole",
-      "aliases": [
-        "phenylbenzimidazole sulfonic acid"
-      ],
-      "cas": "27503-81-7",
-      "ec": "248-502-0",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "padimate-o",
-      "name": "Padimate O",
-      "aliases": [
-        "octyl dimethyl paba"
-      ],
-      "cas": "21245-02-3",
-      "ec": "244-289-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex VI",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "titanium-dioxide",
-      "name": "Titanium dioxide",
-      "aliases": [
-        "titanium dioxide",
-        "titanium(vi) oxide",
-        "e171",
-        "ci 77891"
-      ],
-      "cas": "13463-67-7",
-      "ec": "236-675-5",
-      "e_number": null,
-      "ci": "CI 77891",
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex IV",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "iron-oxides",
-      "name": "Iron oxides",
-      "aliases": [
-        "ci 77491",
-        "ci 77492",
-        "ci 77499",
-        "iron oxide red",
-        "iron oxide yellow",
-        "iron oxide black"
-      ],
-      "cas": "1309-37-1",
-      "ec": "215-168-2",
-      "e_number": null,
-      "ci": "CI 77491",
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex IV",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "zinc-oxide",
-      "name": "Zinc oxide",
-      "aliases": [
-        "ci 77947"
-      ],
-      "cas": "1314-13-2",
-      "ec": "215-222-5",
-      "e_number": null,
-      "ci": "CI 77947",
-      "determination": "allowed_with_conditions",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex IV",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "fd&c-red-3",
-      "name": "FD&C Red 3",
-      "aliases": [
-        "erythrosine",
-        "e127",
-        "ci 45430"
-      ],
-      "cas": "16423-68-0",
-      "ec": "240-474-8",
-      "e_number": null,
-      "ci": "CI 45430",
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "allowed_with_conditions",
-          "annex": "Annex IV",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
-          "effective_date": null
-        },
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food colourant E127; authorisation limits apply.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "resorcinol",
-      "name": "Resorcinol",
-      "aliases": [],
-      "cas": "108-46-3",
-      "ec": "203-585-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Annex III",
-          "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
-          "source_updated_at": null,
-          "conditions": "Colourant and depilatory agent subject to Annex III concentration limits.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "red-40",
-      "name": "Red 40",
-      "aliases": [
-        "red 40",
-        "allura red",
-        "allura red ac",
-        "fd&c red 40",
-        "e129"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E129 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "yellow-5",
-      "name": "Yellow 5",
-      "aliases": [
-        "yellow 5",
-        "tartrazine",
-        "fd&c yellow 5",
-        "e102"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E102 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "yellow-6",
-      "name": "Yellow 6",
-      "aliases": [
-        "yellow 6",
-        "sunset yellow",
-        "fd&c yellow 6",
-        "e110"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E110 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "blue-1",
-      "name": "Blue 1",
-      "aliases": [
-        "blue 1",
-        "brilliant blue",
-        "fd&c blue 1",
-        "e133"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E133 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "bht",
-      "name": "BHT",
-      "aliases": [
-        "bht",
-        "butylated hydroxytoluene",
-        "e321"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E321 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "potassium-bromate",
-      "name": "Potassium bromate",
-      "aliases": [
-        "potassium bromate",
-        "e924"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E924 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "azodicarbonamide",
-      "name": "Azodicarbonamide",
-      "aliases": [
-        "azodicarbonamide",
-        "ada",
-        "e927"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food additive E927 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "carmoisine",
-      "name": "Carmoisine",
-      "aliases": [
-        "e122"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food colourant E122; authorisation limits apply.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "ponceau-4r",
-      "name": "Ponceau 4R",
-      "aliases": [
-        "e124",
-        "cochineal red a"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food colourant E124; authorisation limits apply.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "quinoline-yellow",
-      "name": "Quinoline yellow",
-      "aliases": [
-        "e104"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food colourant E104; authorisation limits apply.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "cochineal-extract",
-      "name": "Cochineal extract",
-      "aliases": [
-        "carmine",
-        "e120",
-        "natural red 4"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "Food",
-          "regulation": "Regulation (EC) No 1333/2008 -- food additives",
-          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
-          "source_updated_at": null,
-          "conditions": "Food colourant E120; authorisation limits apply.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "bisphenol-a",
-      "name": "Bisphenol A",
-      "aliases": [
-        "bpa"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "SVHC",
-          "regulation": "ECHA SVHC Candidate List",
-          "source_url": "https://echa.europa.eu/candidate-list-table",
-          "source_updated_at": null,
-          "conditions": "SVHC Candidate List; authorisation/restriction provisions pending specific use evaluation.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "triclosan",
-      "name": "Triclosan",
-      "aliases": [],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "restricted",
-      "rules": [
-        {
-          "status": "restricted",
-          "annex": "SVHC",
-          "regulation": "ECHA SVHC Candidate List",
-          "source_url": "https://echa.europa.eu/candidate-list-table",
-          "source_updated_at": null,
-          "conditions": "SVHC/restriction; not permitted as a preservative in leave-on products in certain uses.",
-          "effective_date": null
-        }
-      ]
-    },
-    {
-      "id": "water",
-      "name": "Water",
-      "aliases": [
-        "aqua",
-        "eau",
-        "agua",
-        "aqua (water)"
-      ],
-      "cas": "7732-18-5",
-      "ec": "231-791-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "glycerin",
-      "name": "Glycerin",
-      "aliases": [
-        "glycerol"
-      ],
-      "cas": "56-81-5",
-      "ec": "200-289-5",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "propylene-glycol",
-      "name": "Propylene glycol",
-      "aliases": [
-        "propanediol"
-      ],
-      "cas": "57-55-6",
-      "ec": "200-338-0",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "butylene-glycol",
-      "name": "Butylene glycol",
-      "aliases": [],
-      "cas": "107-88-0",
-      "ec": "203-529-7",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "dimethicone",
-      "name": "Dimethicone",
-      "aliases": [
-        "silicone oil"
-      ],
-      "cas": "9006-65-9",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "mineral-oil",
-      "name": "Mineral oil",
-      "aliases": [
-        "paraffinum liquidum",
-        "liquid paraffin"
-      ],
-      "cas": "8012-95-1",
-      "ec": "232-384-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "petrolatum",
-      "name": "Petrolatum",
-      "aliases": [
-        "petroleum jelly"
-      ],
-      "cas": "8009-03-8",
-      "ec": "232-373-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cyclopentasiloxane",
-      "name": "Cyclopentasiloxane",
-      "aliases": [
-        "d5"
-      ],
-      "cas": "541-02-6",
-      "ec": "208-764-9",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cyclomethicone",
-      "name": "Cyclomethicone",
-      "aliases": [],
-      "cas": "69430-24-6",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sodium-chloride",
-      "name": "Sodium chloride",
-      "aliases": [
-        "table salt",
-        "salt"
-      ],
-      "cas": "7647-14-5",
-      "ec": "231-598-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cetearyl-alcohol",
-      "name": "Cetearyl alcohol",
-      "aliases": [],
-      "cas": "8005-44-5",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cetyl-alcohol",
-      "name": "Cetyl alcohol",
-      "aliases": [
-        "cetanol"
-      ],
-      "cas": "36653-82-4",
-      "ec": "253-149-0",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "stearyl-alcohol",
-      "name": "Stearyl alcohol",
-      "aliases": [],
-      "cas": "112-92-5",
-      "ec": "204-017-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "alcohol-denat.",
-      "name": "Alcohol denat.",
-      "aliases": [
-        "denatured alcohol",
-        "sd alcohol"
-      ],
-      "cas": "64-17-5",
-      "ec": "200-578-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "natural-flavor",
-      "name": "Natural flavor",
-      "aliases": [
-        "natural flavour"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sugar",
-      "name": "Sugar",
-      "aliases": [
-        "sucrose"
-      ],
-      "cas": "57-50-1",
-      "ec": "200-334-9",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "corn-syrup",
-      "name": "Corn syrup",
-      "aliases": [],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "whole-grain-corn",
-      "name": "Whole grain corn",
-      "aliases": [],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "whole-grain-oat-flour",
-      "name": "Whole grain oat flour",
-      "aliases": [],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "tocopherol",
-      "name": "Tocopherol",
-      "aliases": [
-        "vitamin e"
-      ],
-      "cas": "59-02-9",
-      "ec": "200-412-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "tocopheryl-acetate",
-      "name": "Tocopheryl acetate",
-      "aliases": [
-        "vitamin e acetate"
-      ],
-      "cas": "7695-91-2",
-      "ec": "231-710-0",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "retinol",
-      "name": "Retinol",
-      "aliases": [],
-      "cas": "68-26-8",
-      "ec": "200-683-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "retinyl-acetate",
-      "name": "Retinyl acetate",
-      "aliases": [
-        "vitamin a acetate"
-      ],
-      "cas": "127-47-9",
-      "ec": "204-844-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "retinyl-palmitate",
-      "name": "Retinyl palmitate",
-      "aliases": [],
-      "cas": "79-81-2",
-      "ec": "201-228-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "niacinamide",
-      "name": "Niacinamide",
-      "aliases": [
-        "vitamin b3"
-      ],
-      "cas": "98-92-0",
-      "ec": "202-713-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "panthenol",
-      "name": "Panthenol",
-      "aliases": [
-        "pro-vitamin b5",
-        "dexpanthenol"
-      ],
-      "cas": "81-13-0",
-      "ec": "201-327-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "ascorbic-acid",
-      "name": "Ascorbic acid",
-      "aliases": [
-        "vitamin c",
-        "e300"
-      ],
-      "cas": "50-81-7",
-      "ec": "200-066-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "citric-acid",
-      "name": "Citric acid",
-      "aliases": [
-        "e330"
-      ],
-      "cas": "77-92-9",
-      "ec": "201-069-1",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sodium-lauryl-sulfate",
-      "name": "Sodium lauryl sulfate",
-      "aliases": [
-        "sls"
-      ],
-      "cas": "151-21-3",
-      "ec": "205-787-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sodium-laureth-sulfate",
-      "name": "Sodium laureth sulfate",
-      "aliases": [
-        "sles",
-        "sodium lauryl ether sulfate"
-      ],
-      "cas": "9004-82-4",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cocamidopropyl-betaine",
-      "name": "Cocamidopropyl betaine",
-      "aliases": [
-        "capb"
-      ],
-      "cas": "61789-40-0",
-      "ec": "263-058-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "stearic-acid",
-      "name": "Stearic acid",
-      "aliases": [],
-      "cas": "57-11-4",
-      "ec": "200-313-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "palmitic-acid",
-      "name": "Palmitic acid",
-      "aliases": [],
-      "cas": "57-10-3",
-      "ec": "200-312-9",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "myristic-acid",
-      "name": "Myristic acid",
-      "aliases": [],
-      "cas": "544-63-8",
-      "ec": "208-875-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "lauric-acid",
-      "name": "Lauric acid",
-      "aliases": [],
-      "cas": "143-07-7",
-      "ec": "205-582-1",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "linoleic-acid",
-      "name": "Linoleic acid",
-      "aliases": [],
-      "cas": "60-33-3",
-      "ec": "200-470-9",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "oleic-acid",
-      "name": "Oleic acid",
-      "aliases": [],
-      "cas": "112-80-1",
-      "ec": "204-007-1",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "caprylic-acid",
-      "name": "Caprylic acid",
-      "aliases": [],
-      "cas": "124-07-2",
-      "ec": "204-677-5",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "hyaluronic-acid",
-      "name": "Hyaluronic acid",
-      "aliases": [],
-      "cas": "9067-32-7",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sodium-hyaluronate",
-      "name": "Sodium hyaluronate",
-      "aliases": [],
-      "cas": "9067-32-7",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "hydrolyzed-collagen",
-      "name": "Hydrolyzed collagen",
-      "aliases": [],
-      "cas": "9064-67-9",
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "ceramide-np",
-      "name": "Ceramide NP",
-      "aliases": [
-        "ceramide 3"
-      ],
-      "cas": null,
-      "ec": null,
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "squalane",
-      "name": "Squalane",
-      "aliases": [],
-      "cas": "111-01-3",
-      "ec": "203-825-6",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "squalene",
-      "name": "Squalene",
-      "aliases": [],
-      "cas": "111-02-4",
-      "ec": "203-826-1",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "cholesterol",
-      "name": "Cholesterol",
-      "aliases": [],
-      "cas": "57-88-5",
-      "ec": "200-353-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "lecithin",
-      "name": "Lecithin",
-      "aliases": [],
-      "cas": "8002-43-5",
-      "ec": "232-307-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "iron",
-      "name": "Iron",
-      "aliases": [
-        "ferrum"
-      ],
-      "cas": "7439-89-6",
-      "ec": "231-096-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "zinc",
-      "name": "Zinc",
-      "aliases": [],
-      "cas": "7440-66-6",
-      "ec": "231-175-3",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "sodium-bicarbonate",
-      "name": "Sodium bicarbonate",
-      "aliases": [
-        "baking soda",
-        "e500ii"
-      ],
-      "cas": "144-55-8",
-      "ec": "205-633-8",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "silicon-dioxide",
-      "name": "Silicon dioxide",
-      "aliases": [
-        "silica",
-        "e551"
-      ],
-      "cas": "7631-86-9",
-      "ec": "231-545-4",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
-    },
-    {
-      "id": "magnesium-sulfate",
-      "name": "Magnesium sulfate",
-      "aliases": [
-        "epsom salt",
-        "e518"
-      ],
-      "cas": "7487-88-9",
-      "ec": "231-298-2",
-      "e_number": null,
-      "ci": null,
-      "determination": "unknown",
-      "rules": []
+  "disclaimer": "Regulatory information, not legal advice. A 'clean' result means no EU ban/restriction was triggered for the substances that could be resolved in this curated dataset. Absence of a substance, or an identity-only substance with determination 'unknown', is NOT 'clean'."
+ },
+ "substances": [
+  {
+   "id": "zinc-pyrithione",
+   "name": "Zinc pyrithione",
+   "aliases": [
+    "zinc pyrithione",
+    "pyrithione zinc",
+    "zpt",
+    "zinc omadine"
+   ],
+   "cas": "13463-41-7",
+   "ec": "236-671-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Prohibited in cosmetic products under Annex II (previously restricted; banned entry effective 2022).",
+     "effective_date": null
     }
-  ]
+   ]
+  },
+  {
+   "id": "lilial",
+   "name": "Lilial",
+   "aliases": [
+    "lilial",
+    "lily aldehyde",
+    "butylphenyl methylpropional",
+    "lyral",
+    "bmhca"
+   ],
+   "cas": "80-54-6",
+   "ec": "201-289-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Banned (added to Annex II by Regulation (EU) 2021/1902, effective 2022).",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "isobutylparaben",
+   "name": "Isobutylparaben",
+   "aliases": [
+    "isobutyl 4-hydroxybenzoate",
+    "isobutyl p-hydroxybenzoate"
+   ],
+   "cas": "4247-02-3",
+   "ec": "224-208-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Banned (Annex II).",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "isopropylparaben",
+   "name": "Isopropylparaben",
+   "aliases": [
+    "isopropyl 4-hydroxybenzoate",
+    "isopropyl p-hydroxybenzoate"
+   ],
+   "cas": "4191-73-5",
+   "ec": "224-069-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Banned (Annex II).",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "benzylparaben",
+   "name": "Benzylparaben",
+   "aliases": [
+    "benzyl 4-hydroxybenzoate",
+    "benzyl p-hydroxybenzoate"
+   ],
+   "cas": "94-18-8",
+   "ec": "202-311-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Banned (Annex II).",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "hydroquinone",
+   "name": "Hydroquinone",
+   "aliases": [],
+   "cas": "123-31-9",
+   "ec": "204-617-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Prohibited in cosmetics (Annex II); also a skin-bleaching agent subject to separate rules.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "1,4-dioxane",
+   "name": "1,4-Dioxane",
+   "aliases": [],
+   "cas": "123-91-1",
+   "ec": "204-661-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Prohibited in cosmetics (Annex II); also listed as a CMR / SVHC.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "acrylamide",
+   "name": "Acrylamide",
+   "aliases": [],
+   "cas": "79-06-1",
+   "ec": "201-173-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "banned",
+   "rules": [
+    {
+     "status": "banned",
+     "annex": "Annex II",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Prohibited in cosmetics (Annex II); CMR category 1B.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "formaldehyde",
+   "name": "Formaldehyde",
+   "aliases": [
+    "formaldehyde",
+    "methanal",
+    "formalin"
+   ],
+   "cas": "50-00-0",
+   "ec": "200-001-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Restricted: 0.05% in nail products, 0.1% in oral products; free formaldehyde limits apply; must carry warning.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "dibutyl-phthalate",
+   "name": "Dibutyl phthalate",
+   "aliases": [
+    "dibutyl phthalate",
+    "dbp"
+   ],
+   "cas": "84-74-2",
+   "ec": "201-557-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Restricted use in cosmetics; also a CMR under CLP.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "boric-acid",
+   "name": "Boric acid",
+   "aliases": [
+    "boric acid"
+   ],
+   "cas": "10043-35-3",
+   "ec": "233-139-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Restricted to talc/concentration limits; banned in certain leave-on products.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "bha",
+   "name": "BHA",
+   "aliases": [
+    "bha",
+    "butylated hydroxyanisole",
+    "e320"
+   ],
+   "cas": "25013-16-5",
+   "ec": "246-563-8",
+   "e_number": "E320",
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Antioxidant; restricted cap and authorisation limits.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "butylparaben",
+   "name": "Butylparaben",
+   "aliases": [
+    "butyl 4-hydroxybenzoate",
+    "butyl p-hydroxybenzoate"
+   ],
+   "cas": "94-26-8",
+   "ec": "202-318-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative; banned in leave-on products for the nappy area of children under 3.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "benzyl-alcohol",
+   "name": "Benzyl alcohol",
+   "aliases": [
+    "benzyl alcohol",
+    "phenylmethanol"
+   ],
+   "cas": "100-51-6",
+   "ec": "202-859-9",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Fragrance allergen subject to Annex III labelling and concentration provisions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "methylparaben",
+   "name": "Methylparaben",
+   "aliases": [
+    "methyl 4-hydroxybenzoate",
+    "methyl p-hydroxybenzoate"
+   ],
+   "cas": "99-76-3",
+   "ec": "202-785-7",
+   "e_number": "E218",
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative; max 0.4% (as acid), 0.8% for ester sum.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "propylparaben",
+   "name": "Propylparaben",
+   "aliases": [
+    "propyl 4-hydroxybenzoate",
+    "propyl p-hydroxybenzoate"
+   ],
+   "cas": "94-13-3",
+   "ec": "202-615-1",
+   "e_number": "E216",
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative; banned in leave-on products for the nappy area of children under 3; max 0.4% (as acid), 0.8% ester sum.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "ethylparaben",
+   "name": "Ethylparaben",
+   "aliases": [
+    "ethyl 4-hydroxybenzoate",
+    "ethyl p-hydroxybenzoate"
+   ],
+   "cas": "120-47-8",
+   "ec": "204-399-4",
+   "e_number": "E214",
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative; max 0.4% (as acid), 0.8% ester sum.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "benzoic-acid",
+   "name": "Benzoic acid",
+   "aliases": [
+    "e210"
+   ],
+   "cas": "65-85-0",
+   "ec": "200-618-2",
+   "e_number": "E210",
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    },
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E210; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "sodium-benzoate",
+   "name": "Sodium benzoate",
+   "aliases": [
+    "e211"
+   ],
+   "cas": "532-32-1",
+   "ec": "208-534-8",
+   "e_number": "E211",
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    },
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E211; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "sorbic-acid",
+   "name": "Sorbic acid",
+   "aliases": [
+    "e200"
+   ],
+   "cas": "110-44-1",
+   "ec": "203-768-7",
+   "e_number": "E200",
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    },
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E200; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "potassium-sorbate",
+   "name": "Potassium sorbate",
+   "aliases": [
+    "e202"
+   ],
+   "cas": "24634-61-5",
+   "ec": "246-376-1",
+   "e_number": "E202",
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    },
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E202; authorised use subject to conditions in Regulation (EC) No 1333/2008.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "salicylic-acid",
+   "name": "Salicylic acid",
+   "aliases": [],
+   "cas": "69-72-7",
+   "ec": "200-712-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V); restricted concentration and use.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "phenoxyethanol",
+   "name": "Phenoxyethanol",
+   "aliases": [],
+   "cas": "122-99-6",
+   "ec": "204-589-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "imidazolidinyl-urea",
+   "name": "Imidazolidinyl urea",
+   "aliases": [],
+   "cas": "39236-46-9",
+   "ec": "254-372-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "diazolidinyl-urea",
+   "name": "Diazolidinyl urea",
+   "aliases": [],
+   "cas": "78491-02-8",
+   "ec": "278-928-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "methylisothiazolinone",
+   "name": "Methylisothiazolinone",
+   "aliases": [
+    "mit"
+   ],
+   "cas": "2682-20-4",
+   "ec": "220-239-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V); restricted concentration (0.01% max).",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "methylchloroisothiazolinone",
+   "name": "Methylchloroisothiazolinone",
+   "aliases": [
+    "cmit"
+   ],
+   "cas": "26172-55-4",
+   "ec": "247-500-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V); restricted concentration and use.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "iodopropynyl-butylcarbamate",
+   "name": "Iodopropynyl butylcarbamate",
+   "aliases": [
+    "ipbc"
+   ],
+   "cas": "55406-53-6",
+   "ec": "259-627-5",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex V",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Preservative (Annex V) subject to maximum concentration and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "benzophenone-3",
+   "name": "Benzophenone-3",
+   "aliases": [
+    "oxybenzone",
+    "bp-3"
+   ],
+   "cas": "131-57-7",
+   "ec": "205-031-5",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "benzophenone-4",
+   "name": "Benzophenone-4",
+   "aliases": [
+    "sulisobenzone",
+    "bp-4"
+   ],
+   "cas": "4065-45-6",
+   "ec": "223-772-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "avobenzone",
+   "name": "Avobenzone",
+   "aliases": [
+    "butyl methoxydibenzoylmethane"
+   ],
+   "cas": "70356-09-1",
+   "ec": "274-581-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "octinoxate",
+   "name": "Octinoxate",
+   "aliases": [
+    "ethylhexyl methoxycinnamate",
+    "octyl methoxycinnamate"
+   ],
+   "cas": "5466-77-3",
+   "ec": "226-775-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "octocrylene",
+   "name": "Octocrylene",
+   "aliases": [],
+   "cas": "6197-30-4",
+   "ec": "228-250-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "homosalate",
+   "name": "Homosalate",
+   "aliases": [],
+   "cas": "118-56-9",
+   "ec": "204-260-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "octisalate",
+   "name": "Octisalate",
+   "aliases": [
+    "ethylhexyl salicylate"
+   ],
+   "cas": "118-60-5",
+   "ec": "204-263-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "ensulizole",
+   "name": "Ensulizole",
+   "aliases": [
+    "phenylbenzimidazole sulfonic acid"
+   ],
+   "cas": "27503-81-7",
+   "ec": "248-502-0",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "padimate-o",
+   "name": "Padimate O",
+   "aliases": [
+    "octyl dimethyl paba"
+   ],
+   "cas": "21245-02-3",
+   "ec": "244-289-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex VI",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "UV filter listed in Annex VI; subject to maximum concentration and use conditions in Annex VI.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "titanium-dioxide",
+   "name": "Titanium dioxide",
+   "aliases": [
+    "titanium dioxide",
+    "titanium(vi) oxide",
+    "e171",
+    "ci 77891"
+   ],
+   "cas": "13463-67-7",
+   "ec": "236-675-5",
+   "e_number": null,
+   "ci": "CI 77891",
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex IV",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "iron-oxides",
+   "name": "Iron oxides",
+   "aliases": [
+    "ci 77491",
+    "ci 77492",
+    "ci 77499",
+    "iron oxide red",
+    "iron oxide yellow",
+    "iron oxide black"
+   ],
+   "cas": "1309-37-1",
+   "ec": "215-168-2",
+   "e_number": null,
+   "ci": "CI 77491",
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex IV",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "zinc-oxide",
+   "name": "Zinc oxide",
+   "aliases": [
+    "ci 77947"
+   ],
+   "cas": "1314-13-2",
+   "ec": "215-222-5",
+   "e_number": null,
+   "ci": "CI 77947",
+   "determination": "allowed_with_conditions",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex IV",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "fd&c-red-3",
+   "name": "FD&C Red 3",
+   "aliases": [
+    "erythrosine",
+    "e127",
+    "ci 45430"
+   ],
+   "cas": "16423-68-0",
+   "ec": "240-474-8",
+   "e_number": null,
+   "ci": "CI 45430",
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "allowed_with_conditions",
+     "annex": "Annex IV",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Colourant on the Annex IV positive list; subject to purity and use conditions.",
+     "effective_date": null
+    },
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food colourant E127; authorisation limits apply.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "resorcinol",
+   "name": "Resorcinol",
+   "aliases": [],
+   "cas": "108-46-3",
+   "ec": "203-585-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Annex III",
+     "regulation": "Regulation (EC) No 1223/2009 -- cosmetic annexes",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32009R1223",
+     "source_updated_at": null,
+     "conditions": "Colourant and depilatory agent subject to Annex III concentration limits.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "red-40",
+   "name": "Red 40",
+   "aliases": [
+    "red 40",
+    "allura red",
+    "allura red ac",
+    "fd&c red 40",
+    "e129"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E129 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "yellow-5",
+   "name": "Yellow 5",
+   "aliases": [
+    "yellow 5",
+    "tartrazine",
+    "fd&c yellow 5",
+    "e102"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E102 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "yellow-6",
+   "name": "Yellow 6",
+   "aliases": [
+    "yellow 6",
+    "sunset yellow",
+    "fd&c yellow 6",
+    "e110"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E110 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "blue-1",
+   "name": "Blue 1",
+   "aliases": [
+    "blue 1",
+    "brilliant blue",
+    "fd&c blue 1",
+    "e133"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E133 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "bht",
+   "name": "BHT",
+   "aliases": [
+    "bht",
+    "butylated hydroxytoluene",
+    "e321"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E321 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "potassium-bromate",
+   "name": "Potassium bromate",
+   "aliases": [
+    "potassium bromate",
+    "e924"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E924 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "azodicarbonamide",
+   "name": "Azodicarbonamide",
+   "aliases": [
+    "azodicarbonamide",
+    "ada",
+    "e927"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food additive E927 (colour/flour agent); authorised use subject to conditions in Regulation (EC) No 1333/2008. This is a food rule, not a cosmetic Annex determination.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "carmoisine",
+   "name": "Carmoisine",
+   "aliases": [
+    "e122"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food colourant E122; authorisation limits apply.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "ponceau-4r",
+   "name": "Ponceau 4R",
+   "aliases": [
+    "e124",
+    "cochineal red a"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food colourant E124; authorisation limits apply.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "quinoline-yellow",
+   "name": "Quinoline yellow",
+   "aliases": [
+    "e104"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food colourant E104; authorisation limits apply.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "cochineal-extract",
+   "name": "Cochineal extract",
+   "aliases": [
+    "carmine",
+    "e120",
+    "natural red 4"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "restricted",
+   "rules": [
+    {
+     "status": "restricted",
+     "annex": "Food",
+     "regulation": "Regulation (EC) No 1333/2008 -- food additives",
+     "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02008R1333",
+     "source_updated_at": null,
+     "conditions": "Food colourant E120; authorisation limits apply.",
+     "effective_date": null
+    }
+   ]
+  },
+  {
+   "id": "bisphenol-a",
+   "name": "Bisphenol A",
+   "aliases": [
+    "bpa"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "triclosan",
+   "name": "Triclosan",
+   "aliases": [],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "water",
+   "name": "Water",
+   "aliases": [
+    "aqua",
+    "eau",
+    "agua",
+    "aqua (water)"
+   ],
+   "cas": "7732-18-5",
+   "ec": "231-791-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "glycerin",
+   "name": "Glycerin",
+   "aliases": [
+    "glycerol"
+   ],
+   "cas": "56-81-5",
+   "ec": "200-289-5",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "propylene-glycol",
+   "name": "Propylene glycol",
+   "aliases": [
+    "propanediol"
+   ],
+   "cas": "57-55-6",
+   "ec": "200-338-0",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "butylene-glycol",
+   "name": "Butylene glycol",
+   "aliases": [],
+   "cas": "107-88-0",
+   "ec": "203-529-7",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "dimethicone",
+   "name": "Dimethicone",
+   "aliases": [
+    "silicone oil"
+   ],
+   "cas": "9006-65-9",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "mineral-oil",
+   "name": "Mineral oil",
+   "aliases": [
+    "paraffinum liquidum",
+    "liquid paraffin"
+   ],
+   "cas": "8012-95-1",
+   "ec": "232-384-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "petrolatum",
+   "name": "Petrolatum",
+   "aliases": [
+    "petroleum jelly"
+   ],
+   "cas": "8009-03-8",
+   "ec": "232-373-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cyclopentasiloxane",
+   "name": "Cyclopentasiloxane",
+   "aliases": [
+    "d5"
+   ],
+   "cas": "541-02-6",
+   "ec": "208-764-9",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cyclomethicone",
+   "name": "Cyclomethicone",
+   "aliases": [],
+   "cas": "69430-24-6",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sodium-chloride",
+   "name": "Sodium chloride",
+   "aliases": [
+    "table salt",
+    "salt"
+   ],
+   "cas": "7647-14-5",
+   "ec": "231-598-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cetearyl-alcohol",
+   "name": "Cetearyl alcohol",
+   "aliases": [],
+   "cas": "8005-44-5",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cetyl-alcohol",
+   "name": "Cetyl alcohol",
+   "aliases": [
+    "cetanol"
+   ],
+   "cas": "36653-82-4",
+   "ec": "253-149-0",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "stearyl-alcohol",
+   "name": "Stearyl alcohol",
+   "aliases": [],
+   "cas": "112-92-5",
+   "ec": "204-017-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "alcohol-denat.",
+   "name": "Alcohol denat.",
+   "aliases": [
+    "denatured alcohol",
+    "sd alcohol"
+   ],
+   "cas": "64-17-5",
+   "ec": "200-578-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "natural-flavor",
+   "name": "Natural flavor",
+   "aliases": [
+    "natural flavour"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sugar",
+   "name": "Sugar",
+   "aliases": [
+    "sucrose"
+   ],
+   "cas": "57-50-1",
+   "ec": "200-334-9",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "corn-syrup",
+   "name": "Corn syrup",
+   "aliases": [],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "whole-grain-corn",
+   "name": "Whole grain corn",
+   "aliases": [],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "whole-grain-oat-flour",
+   "name": "Whole grain oat flour",
+   "aliases": [],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "tocopherol",
+   "name": "Tocopherol",
+   "aliases": [
+    "vitamin e"
+   ],
+   "cas": "59-02-9",
+   "ec": "200-412-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "tocopheryl-acetate",
+   "name": "Tocopheryl acetate",
+   "aliases": [
+    "vitamin e acetate"
+   ],
+   "cas": "7695-91-2",
+   "ec": "231-710-0",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "retinol",
+   "name": "Retinol",
+   "aliases": [],
+   "cas": "68-26-8",
+   "ec": "200-683-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "retinyl-acetate",
+   "name": "Retinyl acetate",
+   "aliases": [
+    "vitamin a acetate"
+   ],
+   "cas": "127-47-9",
+   "ec": "204-844-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "retinyl-palmitate",
+   "name": "Retinyl palmitate",
+   "aliases": [],
+   "cas": "79-81-2",
+   "ec": "201-228-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "niacinamide",
+   "name": "Niacinamide",
+   "aliases": [
+    "vitamin b3"
+   ],
+   "cas": "98-92-0",
+   "ec": "202-713-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "panthenol",
+   "name": "Panthenol",
+   "aliases": [
+    "pro-vitamin b5",
+    "dexpanthenol"
+   ],
+   "cas": "81-13-0",
+   "ec": "201-327-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "ascorbic-acid",
+   "name": "Ascorbic acid",
+   "aliases": [
+    "vitamin c",
+    "e300"
+   ],
+   "cas": "50-81-7",
+   "ec": "200-066-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "citric-acid",
+   "name": "Citric acid",
+   "aliases": [
+    "e330"
+   ],
+   "cas": "77-92-9",
+   "ec": "201-069-1",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sodium-lauryl-sulfate",
+   "name": "Sodium lauryl sulfate",
+   "aliases": [
+    "sls"
+   ],
+   "cas": "151-21-3",
+   "ec": "205-787-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sodium-laureth-sulfate",
+   "name": "Sodium laureth sulfate",
+   "aliases": [
+    "sles",
+    "sodium lauryl ether sulfate"
+   ],
+   "cas": "9004-82-4",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cocamidopropyl-betaine",
+   "name": "Cocamidopropyl betaine",
+   "aliases": [
+    "capb"
+   ],
+   "cas": "61789-40-0",
+   "ec": "263-058-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "stearic-acid",
+   "name": "Stearic acid",
+   "aliases": [],
+   "cas": "57-11-4",
+   "ec": "200-313-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "palmitic-acid",
+   "name": "Palmitic acid",
+   "aliases": [],
+   "cas": "57-10-3",
+   "ec": "200-312-9",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "myristic-acid",
+   "name": "Myristic acid",
+   "aliases": [],
+   "cas": "544-63-8",
+   "ec": "208-875-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "lauric-acid",
+   "name": "Lauric acid",
+   "aliases": [],
+   "cas": "143-07-7",
+   "ec": "205-582-1",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "linoleic-acid",
+   "name": "Linoleic acid",
+   "aliases": [],
+   "cas": "60-33-3",
+   "ec": "200-470-9",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "oleic-acid",
+   "name": "Oleic acid",
+   "aliases": [],
+   "cas": "112-80-1",
+   "ec": "204-007-1",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "caprylic-acid",
+   "name": "Caprylic acid",
+   "aliases": [],
+   "cas": "124-07-2",
+   "ec": "204-677-5",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "hyaluronic-acid",
+   "name": "Hyaluronic acid",
+   "aliases": [],
+   "cas": "9067-32-7",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sodium-hyaluronate",
+   "name": "Sodium hyaluronate",
+   "aliases": [],
+   "cas": "9067-32-7",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "hydrolyzed-collagen",
+   "name": "Hydrolyzed collagen",
+   "aliases": [],
+   "cas": "9064-67-9",
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "ceramide-np",
+   "name": "Ceramide NP",
+   "aliases": [
+    "ceramide 3"
+   ],
+   "cas": null,
+   "ec": null,
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "squalane",
+   "name": "Squalane",
+   "aliases": [],
+   "cas": "111-01-3",
+   "ec": "203-825-6",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "squalene",
+   "name": "Squalene",
+   "aliases": [],
+   "cas": "111-02-4",
+   "ec": "203-826-1",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cholesterol",
+   "name": "Cholesterol",
+   "aliases": [],
+   "cas": "57-88-5",
+   "ec": "200-353-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "lecithin",
+   "name": "Lecithin",
+   "aliases": [],
+   "cas": "8002-43-5",
+   "ec": "232-307-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "iron",
+   "name": "Iron",
+   "aliases": [
+    "ferrum"
+   ],
+   "cas": "7439-89-6",
+   "ec": "231-096-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "zinc",
+   "name": "Zinc",
+   "aliases": [],
+   "cas": "7440-66-6",
+   "ec": "231-175-3",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "sodium-bicarbonate",
+   "name": "Sodium bicarbonate",
+   "aliases": [
+    "baking soda",
+    "e500ii"
+   ],
+   "cas": "144-55-8",
+   "ec": "205-633-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "silicon-dioxide",
+   "name": "Silicon dioxide",
+   "aliases": [
+    "silica",
+    "e551"
+   ],
+   "cas": "7631-86-9",
+   "ec": "231-545-4",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "magnesium-sulfate",
+   "name": "Magnesium sulfate",
+   "aliases": [
+    "epsom salt",
+    "e518"
+   ],
+   "cas": "7487-88-9",
+   "ec": "231-298-2",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  },
+  {
+   "id": "cyclohexasiloxane",
+   "name": "Cyclohexasiloxane",
+   "aliases": [
+    "d6"
+   ],
+   "cas": "540-97-6",
+   "ec": "208-762-8",
+   "e_number": null,
+   "ci": null,
+   "determination": "unknown",
+   "rules": []
+  }
+ ]
 }

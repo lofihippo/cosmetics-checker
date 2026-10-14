@@ -4,7 +4,8 @@ This is **Phase 2, scoped to Annex II + Annex III** (restricted). It provides:
 
  * ``ingredient_report`` / ``check_list`` — library API over ``eu_reg_lists``.
  * ``CoverageReport`` — states which EU annex/source lists are AVAILABLE
-   (Annex II, Annex III) vs MISSING (Annex IV–VI, ECHA) so a result is never
+   (Annex II, Annex III) vs MISSING (Annex IV–VI) vs NOT-INCLUDED (ECHA,
+   deliberately deferred) so a result is never
    mistaken for a full regulatory determination.
  * A CLI (``python -m eu_ingredient_linter``) that reads a single label or a
    batch file and prints a human/JSON report.
@@ -16,8 +17,9 @@ Honesty rules (AGENTS.md):
  * An unmatched / unresolved / recognised-but-unverified ingredient has
    ``determination == "unknown"`` and is NEVER reported as an affirmative
    "OK" / "clean".
- * Annex II and Annex III are covered; Annex IV–VI and ECHA are reported as
-   MISSING (their absence is a coverage gap, not a clean result).
+ * Annex II and Annex III are covered; Annex IV–VI are reported as MISSING and
+   ECHA as NOT-INCLUDED (deliberately deferred) — both are coverage gaps/scope
+   exclusions, not a clean result.
  * An Annex III restriction carries its conditions (product types,
    concentration limits, other restrictions, warnings) which are surfaced but
    NOT evaluated into a concentration verdict.
@@ -31,9 +33,11 @@ here as proven violations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from eu_reg_lists import CheckResult, Registry, check_token
+from eu_reg_lists.checker import banned_rule_is_unambiguous
+from eu_reg_lists.release_policy import coverage_dict
 
 from .formula import evaluate_formula as evaluate_formula, FormulaEvaluation as FormulaEvaluation
 from .tokenize import tokenize
@@ -50,15 +54,33 @@ SOURCE_KINDS = {
     "echa-annex-xvii": "ECHA Restrictions (Annex XVII)",
 }
 
+# ECHA sources are intentionally NOT included in this release (deferred
+# acquisition/data). They are surfaced separately from ordinary "missing"
+# coverage so a user sees that ECHA is deliberately excluded, not just absent.
+# The canonical policy lives in eu_reg_lists.release_policy (single source of
+# truth); this alias keeps the module-level value stable for existing callers.
+DEFERRED_SOURCE_KINDS = {"echa-svhc", "echa-annex-xiv", "echa-annex-xvii"}
+
 DISCLAIMER = "Regulatory information, not legal advice."
 
 
 @dataclass
 class CoverageReport:
-    """Which EU source lists are available in the snapshot vs missing."""
+    """Which EU source lists are available in the snapshot vs missing.
+
+    ``available`` lists covered sources. ``missing`` lists sources that are
+    configured but not present/accepted in the snapshot (a coverage gap, never a
+    clean result). ``not_included`` lists sources deliberately excluded from this
+    release (ECHA) so a user can distinguish a coverage gap from an intentional
+    scope exclusion.
+    """
 
     available: List[str] = field(default_factory=list)
     missing: List[str] = field(default_factory=list)
+    not_included: List[str] = field(default_factory=list)
+    annex17_entries: List[str] = field(default_factory=list)
+    annex17_branches: List[str] = field(default_factory=list)
+    annex17_source: Optional[str] = None
 
     @property
     def has_annex_ii(self) -> bool:
@@ -68,25 +90,37 @@ class CoverageReport:
         return {
             "available": self.available,
             "missing": self.missing,
+            "not_included": self.not_included,
             "has_annex_ii": self.has_annex_ii,
-            "note": "Only listed sources are covered; missing lists are a "
-                    "coverage gap, NOT a clean result.",
+            "annex17_entries": self.annex17_entries,
+            "annex17_branches": self.annex17_branches,
+            "annex17_source": self.annex17_source,
+            "note": "Only listed sources are covered; missing lists and "
+                    "not-included lists are coverage gaps / deliberate scope "
+                    "exclusions, NOT a clean result. REACH Annex XVII is covered "
+                    "only for entry 70 D4/D5/D6 cosmetic branches (wash-off and "
+                    "other cosmetic products); it is not full Annex XVII or REACH "
+                    "coverage, and ECHA exports remain excluded.",
         }
 
 
 def build_coverage(verified_sources: Dict[str, Any]) -> CoverageReport:
-    """Derive available vs missing lists from the snapshot provenance.
+    """Derive available / missing / not-included lists from snapshot provenance.
 
-    A source is AVAILABLE when it is present AND accepted in the snapshot.
-    All configured source kinds not available are listed as MISSING.
+    Uses :func:`eu_reg_lists.release_policy.coverage_dict` as the single source
+    of truth for the release boundary. A source is AVAILABLE only when it is
+    present AND accepted AND not a deliberately-deferred (ECHA) source. ECHA is
+    always reported under ``not_included`` regardless of its physical inventory,
+    so effective coverage can never advertise a deferred list as available.
+    ``not_included`` carries the deliberately-deferred ECHA sources. The
+    remaining configured source kinds not available are listed as MISSING.
     """
-    present = {
-        k for k, v in (verified_sources or {}).items()
-        if v.get("present") and v.get("accepted")
-    }
-    available = sorted(present & set(SOURCE_KINDS))
-    missing = sorted(set(SOURCE_KINDS) - present)
-    return CoverageReport(available=available, missing=missing)
+    cov = coverage_dict(verified_sources)
+    return CoverageReport(available=cov["available"], missing=cov["missing"],
+                          not_included=cov["not_included"],
+                          annex17_entries=list(cov.get("annex17_entries") or []),
+                          annex17_branches=list(cov.get("annex17_branches") or []),
+                          annex17_source=cov.get("annex17_source"))
 
 
 def _tokenize_label(text: str, registry: Optional[Registry] = None) -> List[str]:
@@ -123,7 +157,7 @@ def check_list(tokens: List[str], registry: Registry,
 
 
 def ingredient_report(text: str, registry: Registry,
-                      tokenize_fn: Optional[Callable[[str], List[str]]] = None,
+                      tokenize_fn: Optional[Callable[[str, "Optional[Sequence[str]]"], List[str]]] = None,
                       data_updated_at: Optional[str] = None) -> Dict[str, Any]:
     """Run a full label report with honest unknown semantics.
 
@@ -140,15 +174,44 @@ def ingredient_report(text: str, registry: Registry,
     results = check_list(tokens, registry, effective_dt)
     # A flag includes the ingredient's OWN rules AND any group *linked* rules
     # (explicit source-backed membership), so a member ingredient whose only
-    # evidence is a linked group rule is a conditional/restricted finding.
-    flagged = [r for r in results
-               if r.is_in_dataset and (
-                   r.status in ("banned", "restricted", "allowed_with_conditions")
-                   or any(lr.status in ("banned", "restricted",
-                                        "allowed_with_conditions")
-                          for lr in r.linked_rules))]
-    banned = [r for r in flagged if r.status == "banned"
-              or any(lr.status == "banned" for lr in r.linked_rules)]
+    # evidence is a linked group rule is a conditional/restricted/listing
+    # finding. ``listed`` (e.g. REACH SVHC Candidate List membership) is surfaced
+    # as listing evidence requiring contextual review; it is NOT a numeric
+    # restriction or a prohibition (so it is not counted in ``n_banned``).
+    # A retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6) finding is
+    # ALSO a restriction finding: label-only evidence identifies the restriction
+    # and requires product context (never a category violation). It always
+    # counts toward ``flagged`` so a D5/D6 label is never presented as an
+    # unverified "no verified rule" identity, but it is NEVER counted in
+    # ``n_banned`` (it is not a demonstrated prohibition).
+    def _is_restriction_finding(r: CheckResult) -> bool:
+        if not r.is_in_dataset:
+            return False
+        if r.status in ("banned", "restricted", "listed",
+                        "allowed_with_conditions"):
+            return True
+        if any(lr.status in ("banned", "restricted", "listed",
+                             "allowed_with_conditions")
+               for lr in r.linked_rules):
+            return True
+        # Source-bound REACH Annex XVII entry 70 evidence: present and not
+        # refused/skipped (``not_entry70_substance`` / ``source_not_active``)
+        # identifies a restriction requiring context.
+        e70 = r.entry70 or {}
+        return bool(e70) and e70.get("state") not in (
+            "not_entry70_substance", "source_not_active")
+    flagged = [r for r in results if _is_restriction_finding(r)]
+    # ``n_banned`` counts only ingredients whose retained Annex II prohibition
+    # is UNAMBIGUOUS (no source scope/exception qualifier). A scoped prohibition
+    # (e.g. ``... when used as a substance in hair dye products``, or an
+    # exception referencing an Annex III entry) is still FLAGGED as evidence but
+    # is NOT counted as a definitive prohibition — its applicability is
+    # unresolved. This carries the formula-path distinction into the label path.
+    banned = [r for r in flagged
+              if (r.prohibition_finding == "unambiguous")
+              or any(lr.status == "banned"
+                     and banned_rule_is_unambiguous(lr)
+                     for lr in r.linked_rules)]
     not_in = [r for r in results if not r.is_in_dataset]
     unverified_id = [r for r in results if r.is_in_dataset and r.determination == "unknown"]
     n_unverified = len(not_in) + len(unverified_id)
@@ -178,7 +241,7 @@ def ingredient_report(text: str, registry: Registry,
 
 
 def batch_report(items: List[str], registry: Registry,
-                 tokenize_fn: Optional[Callable[[str], List[str]]] = None,
+                 tokenize_fn: Optional[Callable[[str, "Optional[Sequence[str]]"], List[str]]] = None,
                  data_updated_at: Optional[str] = None) -> Dict[str, Any]:
     """Check a batch of labels (e.g. products) and return an aggregate report.
 
@@ -201,11 +264,7 @@ def batch_report(items: List[str], registry: Registry,
     total_banned = sum(r["n_banned"] for r in per_item)
     total_unverified = sum(r["n_unverified"] for r in per_item)
     # coverage is identical across items; use the first (or empty).
-    coverage = per_item[0]["coverage"] if per_item else {
-        "available": [], "missing": sorted(SOURCE_KINDS),
-        "has_annex_ii": False,
-        "note": "No items checked.",
-    }
+    coverage = per_item[0]["coverage"] if per_item else coverage_dict({})
     invalid_item_indices = [i for i, it in enumerate(per_item)
                             if it["no_ingredients"]]
     no_valid_items = len(per_item) == 0

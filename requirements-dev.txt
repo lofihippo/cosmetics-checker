@@ -1,4 +1,4 @@
-# Development dependencies (Phase 0).
+# Development dependencies (direct, explicit — never relied on transitively).
 # Phase 0 core uses only the Python stdlib; pytest is required for tests.
 pytest>=8.0
 
@@ -15,3 +15,14 @@ coverage>=7.0
 
 # Type checking for the maintained source (part of `make quality`).
 mypy>=1.8
+
+# Browser/Playwright regression tests (make frontend-test / workflow) drive a
+# real installed Chrome via channel="chrome". Declared directly, so the workflow
+# does not rely on a package extra selection order or incidental transitive deps.
+playwright>=1.30
+
+# HTTP test client for the FastAPI/scan TestClient (declared directly).
+httpx>=0.27
+
+# YAML tooling used by workflow/action regression tests.
+PyYAML>=6.0

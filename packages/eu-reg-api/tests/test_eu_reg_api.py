@@ -99,7 +99,8 @@ def test_health_reports_snapshot_identity():
     assert body["count_substances"] == 3
     assert body["count_verified_rules"] == 2
     assert body["coverage"]["has_annex_ii"] is True
-    assert "echa-svhc" in body["coverage"]["missing"]
+    assert "echa-svhc" in body["coverage"]["not_included"]
+    assert "echa-svhc" not in body["coverage"]["missing"]
     assert "compliance determination" in body["note"]
 
 
@@ -219,6 +220,75 @@ def test_check_unknown_ingredients_remain_unknown_not_clean():
     for res in body["results"]:
         assert res["determination"] == "unknown"
     assert body["n_unverified"] == 2
+
+
+def test_check_surfaces_prohibition_finding():
+    """The label-path API result carries the scoped-prohibition classification
+    so an unconditional ban (Benzene) is distinguishable from a scoped one."""
+    cli = _client()
+    r = cli.get("/v1/check", params={"ingredients": "Benzene"})
+    body = r.json()
+    assert body["verdict"] == "FLAGGED"
+    assert body["n_banned"] == 1
+    res = body["results"][0]
+    assert res["prohibition_finding"] == "unambiguous"
+
+
+def test_check_surfaces_entry70_for_siloxane():
+    """The API check surfaces a source-bound REACH Annex XVII entry 70 finding
+    for a D4/D5/D6 identity, distinct from and never replacing the CosIng rule."""
+    import eu_reg_lists as erl
+    d4 = erl.Substance(
+        id="d4", name="Octamethylcyclotetrasiloxane; D4", cas="556-67-2",
+        ec="209-136-7", determination="banned",
+        rules=[erl.Rule(status="banned", annex="Annex II",
+                        regulation="(EC) 2009/1223",
+                        source_url="https://ec.europa.eu/growth/tools-databases/cosing/",
+                        source_updated_at=None, resolution="cosing-annex-ii",
+                        raw={"source_kind": "cosing-annex-ii"})],
+        sources=["cosing-annex-ii"])
+    vs = {"cosing-annex-ii": {"kind": "cosing-annex", "present": True,
+                              "accepted": True, "fetched": True,
+                              "retrieval_error": None},
+          "echa-svhc": {"kind": "echa-svhc", "present": False,
+                        "accepted": False, "fetched": False,
+                        "retrieval_error": "HTTPError"},
+          "reach-annex-xvii-entry70": {
+              "kind": "reach-legal-act", "present": True, "accepted": True,
+              "fetched": True, "retrieval_error": None,
+              "files": {"OJ_L_202401328_EN.pdf": {
+                  "sha256": ("2ae8024b749623971c03967ba6b829e8abaa0285c8fee1"
+                             "b3e459c1a24d730966"),
+                  "byte_len": 488977}},
+              "data_updated_at": DATA_UPDATED_AT,
+              "retrieved_at": RETRIEVED_AT,
+              "mapping": {
+                  "mapping_version": 1,
+                  "document_sha256": ("2ae8024b749623971c03967ba6b829e8abaa028"
+                                      "5c8fee1b3e459c1a24d730966"),
+                  "supported_substances": ["D4", "D5", "D6"],
+                  "supported_branches": ["washoff_cosmetic", "other_cosmetic"],
+              },
+          }}
+    meta = {"title": "t", "version": "0.2.0", "data_updated_at": DATA_UPDATED_AT,
+            "content_hash": "h", "count_substances": 1,
+            "count_verified_rules": 1, "count_identity_only": 0,
+            "count_quarantined": 0, "verified_sources": vs, "snapshot": vs}
+    reg = erl.Registry([d4], data_updated_at=DATA_UPDATED_AT,
+                       verified_sources=vs, metadata=meta)
+    app = create_app(reg, meta)
+    from fastapi.testclient import TestClient
+    cli = TestClient(app)
+    r = cli.get("/v1/check", params={"ingredients": "556-67-2"})
+    body = r.json()
+    res = body["results"][0]
+    assert res["entry70"] is not None
+    assert res["entry70"]["substance_short"] == "D4"
+    assert res["entry70"]["state"] == "missing_context"
+    assert res["entry70"]["source"]["celex"] == "32024R1328"
+    # CosIng evidence preserved independently.
+    assert res["status"] == "banned" and res["annex"] == "Annex II"
+    assert body["verdict"] == "FLAGGED"
 
 
 def test_check_agrees_with_ingredient_report():
