@@ -6,7 +6,7 @@ Check cosmetic ingredient labels against a versioned EU regulatory snapshot. Pas
 
 ## Current status
 
-The local desktop preview is complete for the present scope. On October 14, 2026, the owner tried the examples and an ingredient photo and reported that most features worked. Both preview services are now stopped. Further development is paused until there is specific feedback or a new scope decision.
+This project provides a local desktop preview. Public hosting and physical-device acceptance remain outside the current release.
 
 The accepted local snapshot contains CosIng Annex II–VI and the supported cosmetic branches of REACH Annex XVII entry 70. It does **not** cover all REACH restrictions. ECHA exports/SVHC/Annex XIV remain excluded. Food screening is not supported by the current product flow.
 
@@ -61,9 +61,9 @@ All interfaces reuse the Python checking libraries. OCR text and product databas
 - [Data methodology](docs/methodology.md) · [Data dictionary](docs/data-dictionary.md)
 - [API](packages/eu-reg-api/README.md) · [CLI](packages/eu-ingredient-linter/README.md) · [Scanner](packages/scan-to-check/README.md)
 
-For the complete local quality gate, install `requirements-dev.txt` in the same environment and run `make quality PY="$PWD/.venv/bin/python"`. Browser checks require system Chrome; container checks require Docker. The publication check on October 14 recorded 622 passing tests, one Docker integration test skipped because the daemon was unavailable, 90.41% named-core coverage, and passing scoped lint/type checks. Those are local results, not a hosted CI claim. Check workflow results separately for the hosted platform matrix.
+For the complete local quality gate, install `requirements-dev.txt` in the same environment and run `make quality PY="$PWD/.venv/bin/python"`. Browser checks require system Chrome; container checks require Docker. Check workflow results separately for the hosted platform matrix.
 
-Progress reports, screenshots, accepted snapshot bundles and continuation notes are preserved in gitignored `.local-reference/`. Public hosting, physical-device acceptance, hosted snapshot publication and broader regulatory coverage remain deferred. No accounts, payments or recommendations engine are included.
+Hosted snapshot publication and broader regulatory coverage remain deferred. No accounts, payments or recommendations engine are included.
 
 ## Licenses
 

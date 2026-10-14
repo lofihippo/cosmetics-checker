@@ -8,11 +8,9 @@ community-supplied product label, review or edit the text, and run the shared
 input and editable photo OCR are available. The PWA manifest, service worker
 and versioned shell cache are implemented; this is not a full offline checker.
 
-The owner tried the desktop examples and an ingredient photo on October 14,
-2026 and reported that most features worked. Physical-phone acceptance and
-public hosting remain deferred. The local preview services are stopped; the
-commands below restart them. Regulatory evidence and product provenance remain
-separate, and ECHA coverage is excluded under the current release policy.
+Physical-device acceptance and public hosting remain outside the current release.
+Regulatory evidence and product provenance remain separate, and ECHA coverage is
+excluded under the current release policy.
 
 ## Launch (local)
 

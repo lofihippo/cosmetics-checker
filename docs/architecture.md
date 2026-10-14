@@ -59,15 +59,15 @@ The CLI supports people doing batch checks and scripts consuming reports. A GitH
 
 `deploy/build_deployment.py` creates platform-specific kits using ordinary wheels and a pinned runtime wheelhouse. Generated installers validate artifacts and the target interpreter/platform before replacing a runtime, and roll back on failure. Launchers resolve their snapshot relative to the installed kit. Docker is used for reproducibility and container checks, not required for the everyday local browser preview. GitHub hosts source and automation; public app hosting has not been completed.
 
-## Maintain or resume
+## Maintenance
 
-1. Read `AGENTS.md`, the current scope and the latest local handoff; preserve user edits and the accepted snapshot.
+1. Read `AGENTS.md` and the current product scope; preserve user edits and the accepted snapshot.
 2. Reproduce a concrete problem before changing the engine. Keep legal interpretation in the shared backend.
 3. For a source change, verify current official text, amendments and reuse conditions, build an isolated candidate and retain the accepted baseline.
 4. Run focused regressions, then the relevant quality gate when code changes. Do not rerun the entire suite for prose-only edits.
 5. Verify installed wheels outside the checkout when changing packaging or assets.
 6. Distinguish local tests, user feedback, physical-device checks and hosted runs in reports.
 
-Do not use `make clean` for casual housekeeping: its current target deletes processed regulatory data. Preserve `.local-reference/` milestones, bundles and evidence. Stop only processes whose ownership is known, never all listeners on a familiar port.
+Do not use `make clean` for casual housekeeping: its current target deletes processed regulatory data. Keep backups of accepted snapshots before changing source data. Stop only processes whose ownership is known, never all listeners on a familiar port.
 
-Current next steps are specific usability feedback, later regulatory-source currentness review, and keeping future code and snapshot releases reproducible. Physical-device testing, public hosting, rate limiting and durable hosted refresh remain deferred.
+Public hosting requires separate device testing, rate limiting and trusted snapshot delivery. The current release does not provide durable hosted refresh publication.

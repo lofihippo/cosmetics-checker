@@ -5,10 +5,10 @@ Regulatory information, not legal advice.
 This directory is the **provider-neutral reference** for putting the two existing
 services on a Linux host behind a standard reverse proxy. It is **preparation
 only**: nothing here publishes, exposes a LAN/public listener, creates accounts,
-buys a domain, or incurs charges. Actual public deployment and device acceptance
-remain **unrun** until performed with your participation.
+buys a domain, or incurs charges. Actual public deployment and physical-device acceptance are not provided by
+this reference configuration.
 
-This was validated locally with the Linux Docker daemon. See
+For local validation, see
 [`validate_local_tls.sh`](validate_local_tls.sh) — it runs both services on
 loopback and a Caddy reverse proxy over a **temporary CA** on the loopback
 interface, so no OS/device certificate trust is changed and nothing is exposed
@@ -16,9 +16,8 @@ publicly.
 
 ## The two services and the shared snapshot
 
-Two independent FastAPI processes read **one** verified CosIng Annex II–VI
-snapshot (`content_hash b756a7b3acad418a9ceb273e2dac4336420d374bf6fcaefccaa73eb10d107bbd`,
-`data_updated_at 2026-10-10T02:31:39.763031+00:00`):
+Two independent FastAPI processes read **one** verified snapshot. Inspect its
+metadata and service health for the loaded coverage, content hash and timestamp:
 
 - **`eu-reg-api`** — label checker + browser playground (`/`, `/formula`,
   `/health`, `/v1/...`, `/static/...`), default port **8000**.
@@ -61,15 +60,14 @@ path/scope overlap with `eu-reg-api`.
 
 The retained runtime wheels for `uvloop`, `httptools`, `pydantic-core`,
 `websockets`, `PyYAML`, and `watchfiles` are platform- and CPython-version
-specific. The kit built on this macOS/arm64 machine is `darwin/arm64`; **do not**
-copy that `.venv` or those wheels to a Linux host. Build a fresh Linux kit.
+specific. A macOS kit is not a Linux runtime; **do not** copy its `.venv` or platform
+wheels to a Linux host. Build a fresh Linux kit.
 
 `build_linux_kit.sh` builds a Linux `manylinux` release kit in a container that
-matches the build host's CPython, so the wheels are real Linux wheels. Verified
-here: the Linux kit reports `target_platform linux/aarch64`, `cpython 3.14.8`,
-and the same `content_hash`.
+matches the declared CPython/architecture target. Inspect the resulting release
+manifest before installing it on another machine.
 
-## Local validation (already run here)
+## Local validation
 
 ```bash
 # Build the Linux release kit (from the verified snapshot bundle).
@@ -84,7 +82,7 @@ The validation script asserts: `api /health` 200 with snapshot identity; `api
 missing, never clean); `api /v1/check-formula` 422 `invalid_formula` on an empty
 body; `scan /sw.js` 200 (root-scoped service worker); `scan
 /manifest.webmanifest` 200; `scan /api/check` FLAGGED with ECHA
-`not_included`. All passed on the Linux build with the accepted snapshot.
+`not_included`. Run these assertions against the exact kit and snapshot being deployed.
 
 ## Runbook for the Linux host
 
@@ -153,12 +151,9 @@ bad runtime never leaves both services down.
 - **Payload**: the proxy `request_body max_size` caps bodies (64 MiB API, 80 MiB
   scan) and the app also validates formula token counts. A malformed payload
   returns a structured 4xx (`invalid_formula`) with the disclaimer.
-- **Rate limit**: the V1 scope has no accounts, so a bounded, no-accounts
-  per-origin/per-IP limiter over the read endpoints is the reference approach
-  (see [`docs/rate-limiting.md`](../../docs/rate-limiting.md)). Caddy's standard
-  build has no built-in `rate_limit` directive (that is a third-party plugin);
-  use that documented app-side limiter, **or** nginx's built-in `limit_req` at
-  the same two locations — but keep **one** documented limiter, not several.
+- **Rate limit**: no limiter is wired into this reference configuration. Add and
+  test an appropriate application or proxy policy before public exposure,
+  including the trusted-client-IP boundary below.
 
 ### 8. Trusted-proxy / client-IP boundary
 
@@ -169,22 +164,10 @@ trust client-supplied `X-Forwarded-For` from the public client. On nginx use
 `set_real_ip_from` for the proxy subnet and `real_ip_header X-Forwarded-For`.
 Never bind the app to a public interface directly.
 
-## What is NOT done / unrun
+## Deployment limits
 
-- **Public deployment** — not configured or executed; no provider/account/domain
-  chosen, no public listener exposed.
-- **Device acceptance** — see the phone/PWA checklist; every camera/install/
-  update/OCR/offline result is **unrun** until exercised.
-- **Hosted Actions / refresh publication** — unrun.
-- **`docs/rate-limiting.md`** is a documented **reference/backlog**, not a
-  wired-in limiter (adding one is a separate, scoped change).
-
-## Verified artifacts
-
-- Linux release kit built at `linux-out/release-kit` (Linux `aarch64`, CPython
-  3.14.8, content_hash `b756a7b3...`).
-- Local HTTPS proxy validation: all 7 origin/TLS/scope/error assertions pass
-  (see above); listener loopback-only; temporary CA not installed on any OS/
-  device.
+This reference does not provision a public host, complete physical-device
+acceptance, configure hosted snapshot publication or implement rate limiting.
+Those need their own configuration and validation before public use.
 
 Regulatory information, not legal advice.

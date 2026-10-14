@@ -45,3 +45,19 @@ htmlcov/
 .reasonix/
 .codex/
 .claude/
+
+# Private development records (keep public usage/reference docs tracked).
+/docs/history/
+/docs/development/
+/docs/progress/
+/docs/milestones/
+/docs/handoffs/
+/docs/rate-limiting.md
+/deploy/linux/phone-pwa-device-checklist.md
+**/progress-*.md
+**/milestone-*.md
+**/handoff-*.md
+**/checkpoint-*.md
+**/next-agent-prompt-*.md
+**/development-notes*.md
+**/completion-report*.md
