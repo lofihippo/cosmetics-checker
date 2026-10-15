@@ -4,6 +4,8 @@ Check cosmetic ingredient labels against a versioned EU regulatory snapshot. Pas
 
 **Regulatory information, not legal advice.** A flag is not necessarily a demonstrated violation. No match is not proof of safety, and this is not a complete product compliance assessment.
 
+![Cosmetics Checker running locally in the browser, showing snapshot coverage and ingredient input. Regulatory information, not legal advice.](docs/images/app-screenshot.jpg)
+
 ## Current status
 
 This project provides a local desktop preview. Public hosting and physical-device acceptance remain outside the current release.
