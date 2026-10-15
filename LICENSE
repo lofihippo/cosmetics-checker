@@ -23,5 +23,5 @@ SOFTWARE.
 ---
 
 Note: This MIT license covers ONLY the code in this repository. The data
-files (e.g. `data/eu_flags.json`) are derived from EU/ECHA/public sources
-whose own licenses apply — see LICENSES.md.
+files (e.g. `data/eu_flags.json`) and vendored dependencies have separate
+terms — see LICENSES.md. ECHA exports are excluded from the current release.

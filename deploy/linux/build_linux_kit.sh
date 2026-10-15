@@ -1,62 +1,42 @@
 #!/usr/bin/env bash
-# Build the Linux release kit for the eu-reg services inside a container.
-#
+# Build Linux wheels and an offline kit; no deployment or public listener.
 # Regulatory information, not legal advice.
-#
-# This builds a FRESH Linux kit (real manylinux wheels) from the verified,
-# release-eligible snapshot bundle so platform-specific dependencies are the
-# correct Linux wheels for the declared runtime. It does NOT publish/deploy.
-#
-# Usage (from the repository root):
-#   RELEASE_KIT_BUNDLE=/path/to/verified-annex-bundle.zip \
-#     deploy/linux/build_linux_kit.sh
-#
-# Required:
-#   * a Docker daemon (Linux runtime) in the repo root;
-#   * the verified, release-eligible snapshot bundle path in
-#     RELEASE_KIT_BUNDLE (defaults to the accepted bundle used for this release).
-#   * the repo source tree (it is mounted into the build container).
-#
-# Output: ./linux-out/release-kit (Linux target_platform, content_hash pinned).
 set -euo pipefail
-
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO"
-BUNDLE="${RELEASE_KIT_BUNDLE:-.local-reference/milestone-svhc-2026-10-12/evidence/baseline-svhc-pre.bundle.zip}"
-OUT="${RELEASE_KIT_OUT:-$REPO/linux-out}"
-KIT="$OUT/release-kit"
-
+: "${RELEASE_KIT_BUNDLE:?Set RELEASE_KIT_BUNDLE to a trusted snapshot ZIP}"
+BUNDLE="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).resolve())' "$RELEASE_KIT_BUNDLE")"
+OUT="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).resolve())' "${RELEASE_KIT_OUT:-$REPO/linux-out}")"
 if [ ! -f "$BUNDLE" ]; then
   echo "error: snapshot bundle not found: $BUNDLE" >&2
-  echo "       set RELEASE_KIT_BUNDLE to a verified, release-eligible bundle" >&2
   exit 2
 fi
-rm -rf "$OUT"
+if [ -e "$OUT" ]; then
+  echo "error: output already exists; select a new RELEASE_KIT_OUT: $OUT" >&2
+  exit 2
+fi
+docker info >/dev/null
 mkdir -p "$OUT"
-
-# Use the script's Dockerfile to build the Linux kit. The bundle and repo are
-# mounted so the builder verifies/imports the snapshot and downloads the pinned
-# Linux runtime wheels INSIDE the container (never macOS wheels).
+# Stage only build inputs inside the container; source and bundle mounts stay read-only.
 docker run --rm \
-  -v "$REPO:/repo" -w /repo \
+  -v "$REPO:/repo:ro" -w /repo \
   -v "$BUNDLE:/snapshot-bundle.zip:ro" \
   -v "$OUT:/out" \
   python:3.14-slim bash -c '
 set -e
 python -m pip install --quiet --upgrade pip setuptools wheel
-python /repo/deploy/build_deployment.py \
-  --snapshot-bundle /snapshot-bundle.zip \
-  --dest /out/release-kit
+python - <<"PYBUILD"
+from pathlib import Path
+import shutil
+r, d = Path("/repo"), Path("/tmp/source")
+d.mkdir()
+for name in ("packages", "data/scripts", "deploy"):
+    shutil.copytree(r/name, d/name, ignore=shutil.ignore_patterns("build", "*.egg-info", "__pycache__"))
+for name in ("LICENSE", "LICENSES.md", "pyproject.toml"):
+    shutil.copy2(r/name, d/name)
+PYBUILD
+python /tmp/source/deploy/build_deployment.py \
+  --snapshot-bundle /snapshot-bundle.zip --dest /out/release-kit
 '
-
-echo
-echo "Linux release kit built at $KIT"
-python3 - "$KIT/release-manifest.json" <<'PY'
-import json, sys
-m = json.load(open(sys.argv[1]))
-print("  target_platform :", m["target_platform"])
-print("  interpreter     :", m["interpreter"])
-print("  content_hash    :", m["snapshot"]["content_hash"])
-print("  data_updated_at :", m["snapshot"]["data_updated_at"])
-print("Regulatory information, not legal advice.")
-PY
+echo "Linux release kit built at $OUT/release-kit"
+echo 'Regulatory information, not legal advice.'

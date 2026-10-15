@@ -1,173 +1,99 @@
-# Public-host / Linux deployment reference (preparation only)
+# Linux and Docker
 
 Regulatory information, not legal advice.
 
-This directory is the **provider-neutral reference** for putting the two existing
-services on a Linux host behind a standard reverse proxy. It is **preparation
-only**: nothing here publishes, exposes a LAN/public listener, creates accounts,
-buys a domain, or incurs charges. Actual public deployment and physical-device acceptance are not provided by
-this reference configuration.
+Docker is optional for the local app. These tools build a Linux release kit
+and validate both services over loopback HTTPS. They do not provision a public
+host. A verified snapshot bundle is required; no full dataset comes with a clone.
+See [snapshot setup](../../docs/snapshot-setup.md) and [local kits](../README.md).
 
-For local validation, see
-[`validate_local_tls.sh`](validate_local_tls.sh) — it runs both services on
-loopback and a Caddy reverse proxy over a **temporary CA** on the loopback
-interface, so no OS/device certificate trust is changed and nothing is exposed
-publicly.
+## Build a Linux kit
 
-## The two services and the shared snapshot
+From the repository root, with Python 3 and a running Linux Docker daemon:
 
-Two independent FastAPI processes read **one** verified snapshot. Inspect its
-metadata and service health for the loaded coverage, content hash and timestamp:
-
-- **`eu-reg-api`** — label checker + browser playground (`/`, `/formula`,
-  `/health`, `/v1/...`, `/static/...`), default port **8000**.
-- **`scan-to-check`** — barcode -> ingredients -> checker + PWA (`/`, `/sw.js`,
-  `/manifest.webmanifest`, `/api/health`, `/api/product/{barcode}`,
-  `/api/check`, `/static/...`), default port **8010**.
-
-Both bind to `127.0.0.1` with no auth. ECHA is excluded/deferred; every surface
-reports it as a coverage gap / not-included, **never** a clean result. Product
-lookup and ingredient checks need the running services; the barcode->product
-flow needs the Open Beauty Facts provider. This is **not** an offline checker.
-
-## Topology
-
-One reverse proxy terminates TLS and routes by **host** (two origins), keeping
-the scanner's root-scoped service worker on its own origin so it does not
-collide with the API playground's `/static`:
-
-```text
-                 [ public 443 ]
-                        |
-                  reverse proxy
-                 (TLS terminate)
-                   /          \
-   api.EXAMPLE  (8000)   scan.EXAMPLE  (8010)
-     eu-reg-api              scan-to-check
-         \                      /
-          one shared read-only snapshot (mounted read-only)
+```sh
+RELEASE_KIT_BUNDLE=/absolute/path/verified-snapshot.zip \
+RELEASE_KIT_OUT=/tmp/cosmetics-linux-build \
+  deploy/linux/build_linux_kit.sh
 ```
 
-Separate `api` and `scan` hostnames is the preferred reference because the
-`scan-to-check` service worker has scope `/` on its origin and intercepts
-`/api/` and `/static/vendor/tesseract/`; keeping it on its own domain avoids any
-path/scope overlap with `eu-reg-api`.
+The output directory must not already exist. The build uses `python:3.14-slim`
+and network access for build tooling and the pinned runtime wheels. It mounts
+the source and bundle read-only and stages build inputs inside the container.
+The resulting kit is at `/tmp/cosmetics-linux-build/release-kit`.
 
-- `api.EXAMPLE/`, `/formula`, `/health`, `/v1/...`, `/static/...` -> `eu-reg-api`
-- `scan.EXAMPLE/`, `/sw.js`, `/manifest.webmanifest`, `/api/...`, `/static/...` -> `scan-to-check`
+Inspect `release-manifest.json` for the actual CPython, OS and architecture.
+A macOS wheelhouse cannot run on Linux, and an arm64 kit cannot be assumed to
+run on amd64. Building is not fully hermetic: the base-image tag and build tools
+can change; the runtime lock and retained wheel hashes record the kit inputs.
 
-## Why the Linux wheels must be built on Linux
+## Check both services over local HTTPS
 
-The retained runtime wheels for `uvloop`, `httptools`, `pydantic-core`,
-`websockets`, `PyYAML`, and `watchfiles` are platform- and CPython-version
-specific. A macOS kit is not a Linux runtime; **do not** copy its `.venv` or platform
-wheels to a Linux host. Build a fresh Linux kit.
+Requires Docker, Python 3, curl and openssl. Port 18443 must be available:
 
-`build_linux_kit.sh` builds a Linux `manylinux` release kit in a container that
-matches the declared CPython/architecture target. Inspect the resulting release
-manifest before installing it on another machine.
-
-## Local validation
-
-```bash
-# Build the Linux release kit (from the verified snapshot bundle).
-docker build -f deploy/linux/Dockerfile -t eu-release-linux:local .
-
-# Exercise both origins over HTTPS with a temporary CA (loopback only).
-RELEASE_KIT=/tmp/linux-out/release-kit deploy/linux/validate_local_tls.sh
+```sh
+RELEASE_KIT=/tmp/cosmetics-linux-build/release-kit \
+  deploy/linux/validate_local_tls.sh
 ```
 
-The validation script asserts: `api /health` 200 with snapshot identity; `api
-/v1/check` Benzene FLAGGED; `api /v1/lists/ECHA` 404 `unknown_list` (ECHA
-missing, never clean); `api /v1/check-formula` 422 `invalid_formula` on an empty
-body; `scan /sw.js` 200 (root-scoped service worker); `scan
-/manifest.webmanifest` 200; `scan /api/check` FLAGGED with ECHA
-`not_included`. Run these assertions against the exact kit and snapshot being deployed.
+The script launches both services inside a container. Caddy shares that
+container's network namespace so it can reach their loopback-only listeners.
+Only the proxy port is published to the host, at `127.0.0.1:18443`. Temporary
+certificates are trusted only by the script's curl calls; no system trust store
+is changed. The script removes its own containers and temporary files on exit
+and exits nonzero if a required check fails. Set `HTTPS_PORT` to another unused
+port if needed. This is a finite validation run, not a persistent deployment.
 
-## Runbook for the Linux host
+Checks cover health, a cited Benzene finding, unavailable SVHC coverage, invalid
+formula input, the PWA worker and manifest, and scanner findings. Inspect each
+service's coverage rather than assuming every snapshot contains the same lists.
 
-### 1. Build the Linux kit
+## Optional self-contained image
 
-Run `build_linux_kit.sh` (or the equivalent Dockerfile) on the Linux build host/
-CI for the **declared runtime** (a CPython 3.14 Linux `manylinux` release built
-on the same OS/arch as the host). Never use macOS wheels/venv.
+The Dockerfile builds a kit into an image. Docker `COPY` needs a path **inside**
+the build context; an absolute host path cannot be supplied directly:
 
-### 2. Mount the snapshot read-only
-
-The services read `snapshot/data/processed/eu_reg_lists.sqlite`. Mount the
-`snapshot/` tree **read-only** (bind mount or a read-only volume). Both services
-share it, so they stay in sync.
-
-```bash
-# runbook: read-only snapshot mount
-mkdir -p /srv/eu-release/snapshot
-mount --bind /srv/eu-snapshots/<version>/snapshot /srv/eu-release/snapshot
-mount -o remount,ro,bind /srv/eu-release/snapshot
+```sh
+mkdir -p .docker-input
+cp /absolute/path/verified-snapshot.zip .docker-input/snapshot.zip
+docker build -f deploy/linux/Dockerfile \
+  --build-arg SNAPSHOT_BUNDLE=.docker-input/snapshot.zip \
+  -t cosmetics-checker:local .
+docker run --rm --name cosmetics-checker-local cosmetics-checker:local
 ```
 
-### 3. Run the services
+In a second terminal, check from inside the container:
 
-Run each service as its own systemd unit (or a process supervisor). Both bind
-to 127.0.0.1. `install.sh` recreates `.venv` from the retained, Linux-built
-wheelhouse offline; it validates the manifest, retained wheel hashes, snapshot
-integrity and host target, and rolls back to the prior runtime on failure.
-
-```bash
-systemctl start eu-reg-api   # binds 127.0.0.1:8000
-systemctl start scan-to-check # binds 127.0.0.1:8010
+```sh
+docker exec cosmetics-checker-local /opt/release-kit/.venv/bin/python -c \
+  'import urllib.request; print(urllib.request.urlopen("http://127.0.0.1:8000/health").read().decode())'
+docker stop cosmetics-checker-local
 ```
 
-### 4. Reverse proxy (TLS)
+The services bind to container loopback. A plain `docker run -p 8000:8000`
+does **not** expose them correctly; use the shared-network proxy approach above.
+The snapshot is embedded in this optional image, so retain its attribution and
+check redistribution terms before sharing it. `.docker-input/` is gitignored.
 
-Use `Caddyfile` (or the equivalent nginx config) to terminate TLS and route by
-host. Caddy auto-issues/renews certificates for a public domain; do **not** serve
-either service port publicly. `request_body` caps payload size at the proxy.
+## Public hosting remains separate
 
-### 5. Health / start / stop
+Use distinct API and scanner origins so the scanner's root-scoped service worker
+does not collide with the playground. The worker caches the explicit shell;
+it does not cache API responses, product labels, findings or the OCR vendor tree.
 
-```bash
-curl -f https://api.EXAMPLE/health                 # content_hash + coverage
-curl -f https://scan.EXAMPLE/api/health            # status ok + data_updated_at
-systemctl start eu-reg-api scan-to-check
-systemctl stop  eu-reg-api scan-to-check
-```
+`Caddyfile` is a template requiring real domains and TLS configuration. It does
+not implement authentication or rate limiting. No systemd units are supplied;
+create and test a supervisor configuration before using systemctl commands.
+Serve only the proxy publicly, keep upstream services on loopback, and mount the
+verified snapshot read-only. Configure forwarded-header trust only for the actual
+proxy. Do not trust client-supplied IP headers indiscriminately.
 
-### 6. Snapshot replacement and rollback
+When replacing a snapshot, verify the new bundle, stop both services, switch to
+the verified tree, restart both, and confirm their health hashes and coverage.
+Retain the prior tree for rollback. Update the kit's manifest/install contract
+by rebuilding the kit when distributing a changed snapshot.
 
-Both services read the same snapshot. To refresh:
-
-1. Re-export a new bundle from a trusted checkout and verify/release-check it
-   (`snapshot.py verify`; no deferred ECHA data).
-2. Stage the new `snapshot/` tree next to the live one.
-3. Atomically swap the bind-mount and restart both services together.
-4. Verify `/health` reports the expected `content_hash` and `data_updated_at`.
-
-Rollback: keep the prior `snapshot/` path and bind-mount it back; restart both
-services. `install.sh` also rolls back the `.venv` if a reinstall fails, so a
-bad runtime never leaves both services down.
-
-### 7. Payload / rate limiting
-
-- **Payload**: the proxy `request_body max_size` caps bodies (64 MiB API, 80 MiB
-  scan) and the app also validates formula token counts. A malformed payload
-  returns a structured 4xx (`invalid_formula`) with the disclaimer.
-- **Rate limit**: no limiter is wired into this reference configuration. Add and
-  test an appropriate application or proxy policy before public exposure,
-  including the trusted-client-IP boundary below.
-
-### 8. Trusted-proxy / client-IP boundary
-
-Because the app sees `127.0.0.1` (the proxy) as the client, the proxy must set
-`X-Forwarded-For`/`X-Real-IP` and the app must be told it is behind a trusted
-proxy. On Caddy, `reverse_proxy` sets `X-Forwarded-For` automatically; do not
-trust client-supplied `X-Forwarded-For` from the public client. On nginx use
-`set_real_ip_from` for the proxy subnet and `real_ip_header X-Forwarded-For`.
-Never bind the app to a public interface directly.
-
-## Deployment limits
-
-This reference does not provision a public host, complete physical-device
-acceptance, configure hosted snapshot publication or implement rate limiting.
-Those need their own configuration and validation before public use.
-
-Regulatory information, not legal advice.
+Product lookup needs the provider network; OCR assets need the running server
+unless already available. The PWA shell is not a complete offline checker.
+Physical-device testing, public rate limiting, hosting and hosted snapshot
+publication remain outside this local setup.

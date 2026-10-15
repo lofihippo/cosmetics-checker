@@ -10,7 +10,7 @@ This is **Phase 2, scoped to Annex II + Annex III** (restricted). It provides:
  * A CLI (``python -m eu_ingredient_linter``) that reads a single label or a
    batch file and prints a human/JSON report.
 
-Honesty rules (AGENTS.md):
+Honesty rules (project policy):
  * Every rule carries a ``regulation``, ``source_url``, ``source_updated_at``
    and an explicit ``resolution``; official Reference Numbers are preserved
    separately from file row positions.

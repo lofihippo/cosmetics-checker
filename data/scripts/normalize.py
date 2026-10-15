@@ -587,7 +587,7 @@ def _parse_export_file(path: Path, kind: str, source_url: str,
                        key: Optional[str] = None) -> List[Dict[str, Any]]:
     """Parse one raw export file into verified-rule records using the right
     parser for its source kind. ECHA sources are deliberately disabled/deferred
-    (AGENTS.md #9) and are filtered out of source discovery earlier, so only
+    and are filtered out of source discovery earlier, so only
     CosIng exports are parsed here."""
     if path.suffix.lower() in (".csv", ".tsv", ".txt"):
         if kind == "cosing-annex":
@@ -1282,7 +1282,7 @@ def build_processed(output_dir: Optional[Path] = None,
 
 
 def _source_is_disabled(key: str) -> bool:
-    """Return True if a source kind is deliberately disabled/deferred (AGENTS.md #9).
+    """Return True if a source kind is deliberately disabled/deferred.
 
     ECHA sources are disabled in the fetch configuration, so a normal refresh
     never contacts ECHA and never ingests ECHA-derived data into the release
@@ -1293,7 +1293,7 @@ def _source_is_disabled(key: str) -> bool:
     return key in _DEFERRED_SOURCE_KINDS
 
 
-# ECHA sources are deferred (AGENTS.md #9); kept in sync with fetch.py's
+# ECHA sources are deferred; kept in sync with fetch.py's
 # ``enabled: false`` flags. They must never be ingested into the release
 # snapshot.
 _DEFERRED_SOURCE_KINDS = {"echa-svhc", "echa-annex-xiv", "echa-annex-xvii"}

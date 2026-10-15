@@ -118,7 +118,7 @@ back to a curated/empty registry:
   - `0` — no finding **and** a valid current report was produced; **never a
     compliance certificate** (an unknown identity is not "clean").
   - `1` — a finding under `fail-on=findings` (annotated; valid report; step fails).
-  - `2` — **operational failure** under BOTH policies: invalid/parseable input,
+  - `2` — **operational failure** under BOTH policies: invalid/unparseable input,
     snapshot verification failure, missing/malformed current report, report-write
     failure, or an unexpected CLI exit. The JSON report is not left as a
     success-shaped artifact and a stale report at the output path is not
@@ -158,6 +158,7 @@ successful echo to turn a checker failure green).
 
 ```yaml
 - name: Check ingredients
+  id: check
   uses: ./.github/actions/eu-ingredient-linter
   with:
     input-file: ./examples/formulas/structured-formula.csv

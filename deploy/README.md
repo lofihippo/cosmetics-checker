@@ -17,7 +17,7 @@ the bottom of this file).
 ## Build a release kit from a trusted snapshot bundle
 
 ```bash
-# 1. Export a verified snapshot bundle (from this checkout's accepted snapshot):
+# 1. Export from a populated, verified checkout (not a fresh clone):
 python3 data/scripts/snapshot.py export --root . \
   --output /tmp/annex-verified.zip
 
@@ -40,12 +40,16 @@ notices and a runbook.
 and `PYTHONPATH` unset, and re-installs from the retained wheelhouse with no
 network dependency re-resolution (see the runbook).
 
+A fresh clone has no full regulatory snapshot. Follow [snapshot setup](../docs/snapshot-setup.md) first, or supply an existing trusted bundle directly to step 2. Building requires Python, pip and network access for build tools and runtime wheels. The resulting kit is specific to its OS, architecture and CPython major/minor.
+
 ## Run and validate
 
 ```bash
 cd /tmp/eu-release-kit
 ./run-eu-reg-api.sh        # http://127.0.0.1:8000/
+# In a separate terminal in the same kit directory:
 ./run-scan-to-check.sh     # http://127.0.0.1:8010/
+# Stop both services with Ctrl-C before reinstalling.
 ./install.sh               # recreate .venv from the wheelhouse (offline)
 ```
 
@@ -73,7 +77,7 @@ runtime behind. It uses the venv's bundled pip with `--no-index` (no
 `pip --upgrade pip`, no package-index access).
 
 Because `data/processed/*.sqlite` is gitignored, the snapshot is delivered via
-the verified bundle (see `docs/snapshot-setup.md`). This is the reproducible,
+the verified bundle (see [snapshot setup](../docs/snapshot-setup.md)). This is the reproducible,
 offline path — no official fetch at runtime.
 
 ## Make targets
@@ -99,7 +103,9 @@ make deploy-build-consume-existing DEPLOY_BUNDLE=/tmp/verified.zip DEPLOY_DEST=/
 
 ## Coverage honesty
 
-The snapshot covers **Annex II–VI** (CosIng). **ECHA (SVHC / Annex XIV / Annex
+Inspect the supplied snapshot for its exact coverage. The current local snapshot
+contains **Annex II–VI** (CosIng) and the supported cosmetic branches of **REACH
+Annex XVII entry 70**, sourced separately from an EU legal act. **ECHA (SVHC / Annex XIV / Annex
 XVII) is deliberately NOT included** in this release (acquisition is disabled /
 deferred). Both services report ECHA as `not_included` across every report
 surface (JSON/CSV/text/HTML/CLI and both browser apps) — a coverage gap / scope
@@ -112,6 +118,5 @@ this).
 Public hosting requires decisions the user must make independently of this
 package: host provider/region and data-reuse terms (CosIng EU-reuse, ODbL
 product data), TLS/reverse proxy, snapshot delivery + refresh cadence, access
-control (this build binds to 127.0.0.1 with no auth), wheel-based (source-free)
-packaging, and provider accounts/charges. None of these are configured or
-performed here.
+control (this build binds to 127.0.0.1 with no auth), and provider accounts/charges. The local wheel-based kit is implemented; it
+does not configure those hosting services.

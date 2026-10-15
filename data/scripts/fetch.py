@@ -1,6 +1,6 @@
 """Fetch official regulatory export files into data/raw/ (best-effort).
 
-IMPORTANT honesty rules (per AGENTS.md #4):
+IMPORTANT honesty rules:
   * We NEVER scrape ECHA or any official website. We only download *official
     export / downloadable files* at stable, documented URLs.
   * If a source cannot be reached, the pipeline records it as NOT FETCHED and

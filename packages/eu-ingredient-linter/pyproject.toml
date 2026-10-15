@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eu-ingredient-linter"
 version = "0.1.0"
-description = "Check ingredients against an Annex-II EU regulatory registry (Phase 2)"
+description = "Cosmetic ingredient label and formula screening with cited EU regulatory findings"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = ["eu-reg-lists"]

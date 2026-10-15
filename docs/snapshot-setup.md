@@ -5,8 +5,7 @@ Regulatory information, not legal advice.
 A new checkout does not contain the gitignored regulatory data. Transfer an
 existing, verified snapshot with these transfer commands; verify/import do not
 fetch or normalize data. The accepted local checkpoint now includes CosIng
-Annex II–VI and the supported REACH entry-70 branches. The older `annex-ii.zip`
-names below are examples, not a claim that all bundles have identical coverage.
+Annex II–VI and the supported REACH entry-70 branches. The file names below are examples, not a claim that all bundles have identical coverage.
 Use source code compatible with the bundle and inspect verification output.
 
 ## Acquiring the official CosIng exports
@@ -18,20 +17,18 @@ page (an official export download, not page scraping):
 * Annex II list: `https://ec.europa.eu/growth/tools-databases/cosing/reference/annexes/list/II` → `COSING_Annex_II_v2.txt`
 * Annex III list: `https://ec.europa.eu/growth/tools-databases/cosing/reference/annexes/list/III` → `COSING_Annex_III_v2.txt`
 
-On this environment the Annex III export is fetchable directly at
-`https://api.tech.ec.europa.eu/cosing20/1.0/api/annexes/III/export-csv`
-(`COSING_Annex_III_v2.txt`, 296,566 bytes, SHA-256
-`05690fee6774625c43eddb7fe4a93c47340aa9976d513ff8c699b8a5900f8145`, retrieved
-2026-10-08). The file's preamble declares `"ANNEX III","Last update: 06/10/2026"`.
-If acquisition is unavailable, `data/scripts/fetch.py` records the source as
-not-fetched and ingestion keeps the preserved Annex II coverage.
+The configured official export endpoints are recorded in `data/scripts/fetch.py`.
+Availability can change. Failed acquisition is recorded and preserves previously
+accepted source coverage; it does not create new verified rules. ECHA acquisition
+remains disabled. A CosIng download alone does not provide entry-70 coverage:
+that requires the separately retained official legal document and accepted mapping.
 
 ## Export from the working checkout
 
 ```bash
 python3 data/scripts/snapshot.py export --root . \
-  --output .local-reference/snapshots/annex-ii.zip
-python3 data/scripts/snapshot.py verify .local-reference/snapshots/annex-ii.zip
+  --output .local-reference/snapshots/cosmetics-snapshot.zip
+python3 data/scripts/snapshot.py verify .local-reference/snapshots/cosmetics-snapshot.zip
 ```
 
 The ZIP includes SQLite, JSONL, metadata, the active fetch manifest, raw files
@@ -61,15 +58,15 @@ Copy the bundle through your normal file-transfer process, then run from the new
 checkout:
 
 ```bash
-python3 data/scripts/snapshot.py verify /absolute/path/annex-ii.zip
-python3 data/scripts/snapshot.py import /absolute/path/annex-ii.zip \
-  --destination .local-reference/restored-annex-ii
+python3 data/scripts/snapshot.py verify /absolute/path/cosmetics-snapshot.zip
+python3 data/scripts/snapshot.py import /absolute/path/cosmetics-snapshot.zip \
+  --destination .local-reference/restored-cosmetics
 
 python3 -m venv .venv
 .venv/bin/python -m pip install -e packages/eu-reg-lists \
   -e packages/eu-ingredient-linter -e packages/eu-reg-api
 
-EU_REG_SNAPSHOT="$PWD/.local-reference/restored-annex-ii/data/processed/eu_reg_lists.sqlite" \
+EU_REG_SNAPSHOT="$PWD/.local-reference/restored-cosmetics/data/processed/eu_reg_lists.sqlite" \
   .venv/bin/eu-reg-api
 ```
 
@@ -93,7 +90,8 @@ curl --get http://127.0.0.1:8000/v1/check \
 Compare health's hash, date, counts and coverage with the verification output
 for the exact bundle you restored. Do not refresh data merely to make historical
 counts match. The accepted October 14 local content hash begins `5145f70e`, with
-2,376 identities and 2,298 ordinary-rule verified identities. Its coverage is
+2,376 identities and 2,298 ordinary-rule verified identities. No public download
+URL for that bundle is promised by this guide. Its coverage is
 CosIng II–VI plus the supported entry-70 branches; ECHA exports remain excluded.
 Older bundles retain their own counts, timestamps and narrower coverage.
 

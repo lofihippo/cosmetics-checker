@@ -1,6 +1,6 @@
 """Check a single ingredient against a Registry, producing a CheckResult.
 
-Honesty rules (per AGENTS.md):
+Honesty rules (project policy):
   * A ``determination`` of "unknown" — whether from a not-found token or a
     recognised-but-unverified substance — is NEVER an affirmative "OK".
   * Every verified rule carries a ``regulation``, ``source_url``,

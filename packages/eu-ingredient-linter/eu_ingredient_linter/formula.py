@@ -8,7 +8,7 @@ equivalents, after-mixing limits, aggregate limits, pH/professional-use
 conditions) are conservatively returned as ``requires_manual_review`` /
 ``requires_context`` rather than evaluated.
 
-Honesty semantics (per AGENTS.md):
+Honesty semantics (project policy):
   * A numeric "within limit" is ONLY a numeric comparison against the rule's cap.
     It is NOT a statement that the ingredient is clean/compliant/unrestricted,
     and NOT a claim that warnings, pH, professional-use, or other conditions are

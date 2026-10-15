@@ -1,4 +1,4 @@
-# Cosmetics Checker / Ing Checker
+# Cosmetics Checker
 
 Check cosmetic ingredient labels against a versioned EU regulatory snapshot. Paste a label, review a barcode lookup or photo-OCR draft, or supply a formula with explicit concentrations. Results show matched rules, conditions, sources and what remains unknown.
 
@@ -10,11 +10,11 @@ This project provides a local desktop preview. Public hosting and physical-devic
 
 The accepted local snapshot contains CosIng Annex II–VI and the supported cosmetic branches of REACH Annex XVII entry 70. It does **not** cover all REACH restrictions. ECHA exports/SVHC/Annex XIV remain excluded. Food screening is not supported by the current product flow.
 
-This repository now contains the current local-preview implementation, continuing the original [Ing Checker](https://github.com/lofihippo/ing-checker) history. Regulatory snapshots and private development notes remain separate from the source checkout. Publishing the code does not deploy a public service.
+The source checkout contains the application, curated seed and snapshot metadata. Full raw exports, SQLite/JSONL snapshots and private development notes are kept separately. Publishing the code does not deploy a public service.
 
 ## Run locally
 
-Install the four packages into a virtual environment:
+From the repository root, use Python 3.11 or newer and install the four packages into a virtual environment (dependency installation needs network access or a package cache):
 
 ```sh
 python3 -m venv .venv
@@ -39,7 +39,7 @@ PORT=18010 .venv/bin/scan-to-check
 
 Open `http://127.0.0.1:18010/` for barcode lookup, manual labels and editable photo OCR. Stop each service with Ctrl-C in its own terminal. Use available ports; do not terminate unrelated listeners.
 
-An installed kit can also be started from its own launchers. Kit creation and offline installation are documented in [deploy/README.md](deploy/README.md). Offline installation does not make the application a complete offline checker.
+An installed kit can also be started from its own launchers. Kit creation and offline installation are documented in [deploy/README.md](deploy/README.md). For Linux/Docker builds and a local HTTPS check, see the [Linux guide](deploy/linux/README.md). Docker is optional for the normal local preview. Offline installation does not make the application a complete offline checker.
 
 ## How the pieces fit
 
@@ -54,7 +54,7 @@ An installed kit can also be started from its own launchers. Kit creation and of
 
 All interfaces reuse the Python checking libraries. OCR text and product database labels must be reviewed; neither is regulatory evidence by itself. Concentration comparisons cover a bounded set of mappings and require explicit context.
 
-## Development and documentation
+## Documentation
 
 - [Architecture and maintenance](docs/architecture.md)
 - [Product scope](docs/product-scope.md) · [Formula evaluation](docs/formula-evaluator.md)

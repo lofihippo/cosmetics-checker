@@ -14,7 +14,8 @@ excluded under the current release policy.
 
 ## Launch (local)
 
-First install the package (editable, from the repo root). This is required — the
+First create a virtual environment (`python3 -m venv .venv`) and restore a
+[verified snapshot](../../docs/snapshot-setup.md). Install the package (editable, from the repo root). This is required — the
 module is not importable from the checkout without installation:
 
 ```bash
@@ -26,7 +27,7 @@ module is not importable from the checkout without installation:
 Or, from the repo root, run the shared build target:
 
 ```bash
-make build
+make build PY="$PWD/.venv/bin/python"
 ```
 
 Then launch (from the repo root; the app loads the snapshot via
@@ -136,7 +137,7 @@ ingredient order.
   (`scan-to-check-static-scan-to-check-shell-v1`). It **never** caches
   `/api/...` product/check/health responses, regulatory findings, user images or
   entered labels, and **never** precaches the ~27 MiB vendored Tesseract vendor
-  tree (OCR needs connectivity to load its assets for this milestone). It only
+  tree (OCR needs the running server to load its assets). It only
   records the explicit shell route (`/`) on navigation and never writes arbitrary
   non-shell pages (e.g. `/docs`, JSON, errors) as the offline home. On
   `activate`, only obsolete caches **owned by this app's namespace** are deleted;

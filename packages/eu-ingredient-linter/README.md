@@ -1,4 +1,4 @@
-# eu-ingredient-linter (Phase 2, Annex II scoped)
+# eu-ingredient-linter
 
 Check cosmetic ingredient labels against the **Annex II (prohibited), Annex III
 (restricted), and Annex IV/V/VI (conditional positive lists)** registry produced
@@ -6,8 +6,8 @@ by `eu-reg-lists`.
 
 > **Scope:** **Annex II–VI** are covered. Annex III restrictions carry their
 > conditions (product types, concentration limits, other restrictions,
-> warnings) which are surfaced but **not** evaluated into a concentration
-> verdict. Annex IV (colourants), V (preservatives) and VI (UV filters) are
+> warnings). Label checks surface these conditions; formula checks evaluate only
+> the explicitly supported numeric mappings with sufficient context. Annex IV (colourants), V (preservatives) and VI (UV filters) are
 > **conditional positive lists**: their presence is evidence of a source-list
 > entry, **not** a clean/compliant result — a substance present only in a
 > positive list is still a **flagged** (not clean) finding. The ECHA lists
@@ -16,7 +16,7 @@ by `eu-reg-lists`.
 > NOT-included. Their absence is a **coverage gap / scope exclusion, never a
 > clean result**.
 
-## Honesty rules (AGENTS.md)
+## Honesty rules (project policy)
 
 - A `determination` of `"unknown"` — whether the token is *not in the dataset*
   or is a *recognised-but-unverified* identity — is **never an affirmative
@@ -28,7 +28,13 @@ by `eu-reg-lists`.
   stable even when physical file layout changes.
 - "Regulatory information, not legal advice."
 
+Source-gated REACH Annex XVII entry 70 is also supported when present in the
+loaded snapshot; this is not full REACH coverage. See [formula evaluation](../../docs/formula-evaluator.md).
+
 ## Install / run
+
+Run commands from the repository root in the virtual environment described in
+the [root README](../../README.md). Supply a [verified snapshot](../../docs/snapshot-setup.md); the database is not included in a fresh clone.
 
 ```bash
 python -m pip install -e packages/eu-reg-lists
@@ -43,7 +49,7 @@ python -m eu_ingredient_linter \
   --label "Aqua, Benzene, Benzidine, TotallyFakeIngredient"
 ```
 
-Prints coverage (Annex II present, others missing) + a per-ingredient verdict
+Prints the loaded snapshot coverage and a per-ingredient verdict
 with official Reference Number and row position.
 
 ### CLI (batch file — one label per line)

@@ -61,3 +61,11 @@ htmlcov/
 **/next-agent-prompt-*.md
 **/development-notes*.md
 **/completion-report*.md
+
+# Local coding-agent instructions and deployment scratch output.
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+/deploy/linux/local-Caddyfile
+/linux-out/
+.docker-input/

@@ -1,4 +1,4 @@
-# eu-reg-api — local, read-only EU regulatory substance API (Phase 3)
+# eu-reg-api — local, read-only EU regulatory substance API
 
 Regulatory information, not legal advice.
 
@@ -12,7 +12,7 @@ older snapshot is loaded. ECHA exports remain excluded.
 A rule match may require further context, and a numeric result is not a safety
 or complete compliance determination. Inspect `/health` for the loaded snapshot
 and coverage. See the root README and `docs/architecture.md` for current project
-status; later sections retain detailed interface and milestone notes.
+status and interface details.
 
 ## Install & launch
 
@@ -46,12 +46,6 @@ shows the loaded snapshot and coverage, lets you paste a label and run the
 checker, and expands source/citation details per finding. Interactive API docs
 remain at `/docs` and `/redoc`.
 
-The preview screenshots below are captured from the live app (see
-`.local-reference/playground-*.png` in a local checkout): a flagged label
-(`Aqua, Benzene, TotallyFake123`) with expanded citations, and an
-unverified label (`Aqua, Glycerin`) that is correctly shown as not-fully-verified
-and never clean.
-
 The snapshot is loaded **once at startup** through `eu_reg_lists.load`. If the
 path is missing or contains no substances, startup **fails loudly** — the
 curated Phase-0 seed or an empty registry is never silently substituted.
@@ -64,14 +58,13 @@ global, so two apps built from different registries remain fully isolated.
 
 The gitignored regulatory data must be supplied to a fresh checkout. See
 [`docs/snapshot-setup.md`](../../docs/snapshot-setup.md) for the offline
-export/verify/import commands that restore a verified Annex-II snapshot beside
+export/verify/import commands that restore a verified snapshot beside
 a fresh code checkout, then set `EU_REG_SNAPSHOT` to the restored SQLite path.
 
 ### Snapshot provision note
 
 `data/raw/` and `data/processed/*.sqlite` / `*.jsonl` are **gitignored** and
-must be supplied to a new checkout (e.g. from the project's release artifacts or
-by running `make refresh-data` fresh). `data/processed/metadata.json` is
+must be supplied to a new checkout from a trusted bundle (no public snapshot download is currently promised). `data/processed/metadata.json` is
 committed for provenance review, but a metadata hash alone does **not**
 reconstruct the dataset — the raw/processed artifacts are the source of truth.
 
@@ -223,8 +216,8 @@ and library. Verified in tests (`test_check_agrees_with_ingredient_report`).
 - **Annex II–VI covered; ECHA not included.** Annex II (prohibited),
   Annex III (restricted) and Annex IV/V/VI (conditional positive lists) are
   covered; ECHA SVHC/Annex XIV/Annex XVII remain **not included / deferred**,
-  never clean. The GitHub Action, additional original Phase-2 formats, and broader
-  regulatory coverage remain **backlog** items.
+  never clean. Supported REACH entry-70 branches are available only with their
+  accepted snapshot mapping. Broader regulatory coverage remains outside scope.
 - **Annex IV/V/VI are conditional positive lists, not a compliance engine.**
   Their presence is evidence of a source-list entry; a substance present only
   in a positive list is **flagged**, never `clean`. Absence from a positive
@@ -234,9 +227,8 @@ and library. Verified in tests (`test_check_agrees_with_ingredient_report`).
 - An Annex III match is a **restriction that requires evaluation**. The
   playground shows each rule's conditions (product types, concentration
   limits, other restrictions, warnings) but does **not** build a general
-  concentration evaluator in this milestone; it never claims a limit was
-  exceeded. The source information needed for a future structured-formula
-  milestone is preserved.
+  concentration evaluator from a label. The formula endpoint and editor support
+  bounded numeric mappings when explicit concentration and context are supplied.
 - The browser playground is a **developer preview**, not the scanner
   application. It has **no** barcode scanning, OCR, camera access, image
   uploads, product-database integration, accounts, payments, recommendations,
@@ -274,7 +266,7 @@ ignores `AbortSignal` and resolves promises explicitly, so correctness is
 proven independently of cancellation and of sleep timing.
 
 A second frontend suite,
-[`test_formula_editor_frontend.py`](../packages/eu-reg-api/tests/test_formula_editor_frontend.py),
+[`test_formula_editor_frontend.py`](tests/test_formula_editor_frontend.py),
 drives the `/formula` page the same way and covers the three-state context
 handling, partially-completed-row validation, decimal-string preservation, the
 request/response lifecycle (edits/add/remove/examples retiring pending requests;
@@ -291,9 +283,9 @@ make frontend-test     # runs BOTH the label-playground and formula-editor suite
 ```
 
 The `frontend-test` target runs
-[`test_playground_frontend.py`](../packages/eu-reg-api/tests/test_playground_frontend.py)
+[`test_playground_frontend.py`](tests/test_playground_frontend.py)
 and
-[`test_formula_editor_frontend.py`](../packages/eu-reg-api/tests/test_formula_editor_frontend.py).
+[`test_formula_editor_frontend.py`](tests/test_formula_editor_frontend.py).
 To run just one:
 
 ```bash

@@ -112,12 +112,12 @@ def _validate_host_python(py: Path) -> str | None:
         return f"--python interpreter not found: {py}"
     if not os.access(py, os.X_OK):
         return f"--python interpreter is not executable: {py}"
-    probe = f"""import platform, sys
+    probe = """import platform, sys
 impl = sys.implementation.name
 plat = sys.platform
 machine = platform.machine()
 ver = (sys.version_info[0], sys.version_info[1])
-print(f"{{impl}} {{ver[0]}}.{{ver[1]}} {{plat}} {{machine}}", end="")
+print(f"{impl} {ver[0]}.{ver[1]} {plat} {machine}", end="")
 """
     expected = f"{sys.implementation.name} {sys.version_info[0]}.{sys.version_info[1]} {sys.platform} {platform.machine()}"
     try:
@@ -631,8 +631,8 @@ def _runbook_text(dest: Path, content_hash: str | None, data_updated_at: str | N
 Regulatory information, not legal advice.
 
 This is a local, self-contained, source-independent release kit of the
-**eu-reg-api** and **scan-to-check** services over the verified CosIng Annex
-II–VI snapshot. It is for inspection and local validation only — it is **not**
+**eu-reg-api** and **scan-to-check** services over the supplied verified
+snapshot. Exact coverage is listed below. It is for inspection and local validation only — it is **not**
 published, hosted or deployed.
 
 ## What's here
@@ -729,7 +729,8 @@ SHA-256, wheel hashes and target platform.
 
 ## Coverage honesty
 
-The snapshot covers Annex II–VI (CosIng).
+Coverage is determined by this kit's snapshot, including entry 70 only when its
+accepted source mapping is present. This is not complete EU regulatory coverage.
 
 - available: {avail}
 - missing:   {missing}

@@ -1,8 +1,7 @@
 # eu-reg-lists
 
-Normalized EU regulatory substance data + a lookup API. This is **Phase 1** —
-the data foundation that the `eu-ingredient-linter` (Phase 2) and `eu-reg-api`
-(Phase 3) build on top of.
+Normalized EU regulatory substance data and a lookup API, shared by the linter,
+HTTP API and scanner. Coverage depends on the loaded snapshot.
 
 > Regulatory information, not legal advice. A substance with `determination:
 > "unknown"` is NOT "clean" and NOT "no restriction" — it is unverified.
@@ -11,7 +10,7 @@ the data foundation that the `eu-ingredient-linter` (Phase 2) and `eu-reg-api`
 
 The pipeline **only ingests official export files** (CosIng Annex exports from
 the European Commission). It does **not** scrape ECHA or any
-official website (per AGENTS.md #4). ECHA is **not** ingested in this release
+official website. ECHA is **not** ingested in this release
 (acquisition is disabled/deferred).
 
 * `data/scripts/fetch.py` downloads official export files into `data/raw/`.

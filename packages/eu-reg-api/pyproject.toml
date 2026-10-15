@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eu-reg-api"
 version = "0.1.0"
-description = "Local read-only REST API over the Annex-II registry (Phase 3)"
+description = "Read-only API and browser interfaces for cosmetic ingredient screening"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = [

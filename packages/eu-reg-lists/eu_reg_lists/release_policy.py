@@ -36,7 +36,7 @@ SOURCE_KINDS: Dict[str, str] = {
     "echa-annex-xvii": "ECHA Restrictions (Annex XVII)",
 }
 
-# ECHA sources are deliberately deferred in this release (AGENTS.md #9).
+# ECHA sources are deliberately deferred in this release.
 # Acquisition is disabled; they must never be ingested or distributed, and they
 # are surfaced as an explicit coverage exclusion rather than a clean result.
 DEFERRED_SOURCE_KINDS = frozenset({"echa-svhc", "echa-annex-xiv", "echa-annex-xvii"})

@@ -945,7 +945,7 @@ def test_echa_distinct_restrictions_retained():
 
 
 def test_normalize_skips_disabled_echa_source(tmp_path):
-    """ECHA sources are deliberately disabled (AGENTS.md #9). A file placed in
+    """ECHA sources are deliberately disabled. A file placed in
     an ECHA raw dir with an accepted manifest must still be SKIPPED — ECHA data
     is never ingested into the release snapshot."""
     _write_export(tmp_path, "echa-svhc", "svhc.csv",

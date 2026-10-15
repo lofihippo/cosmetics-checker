@@ -1,124 +1,97 @@
-# LICENSES.md
+# Licenses and attribution
 
-This repository documents the license of **code** and of each **data source**.
+Regulatory information, not legal advice.
 
----
+## Original code
 
-## Code
+Original project code is licensed under [MIT](LICENSE). This does not relicense
+upstream regulatory data, product records or vendored dependencies. Preserve the
+applicable notices when distributing source, wheels, containers or snapshot bundles.
 
-The software in this repository (including `eu_lint.py`, `app.py`, and the
-`tests/` directory) is licensed under the **MIT License**. See `LICENSE`.
+## Regulatory data
 
-### Vendored browser dependencies (scan-to-check photo OCR)
+### European Commission CosIng
 
-The photo-OCR flow vendors pinned third-party browser assets locally so
-recognition runs without a runtime CDN. These files are **not** MIT-licensed and
-carry their own licenses:
+Cosmetics Checker uses official CosIng Annex II–VI exports, normalizing the
+records and linking identities while retaining source references and hashes.
+Attribution: European Commission, CosIng; the normalized data and assessments
+are modifications made by this project, not Commission endorsements.
 
-- **Tesseract.js** `6.0.1` (`static/vendor/tesseract/tesseract.min.js`,
-  `worker.min.js`) — **Apache-2.0**. Apache-2.0 requires preservation of the
-  NOTICE/license text; the bundled `tesseract.min.js.LICENSE.txt`,
-  `worker.min.js.LICENSE.txt` and `LICENSE-APACHE-2.0.txt` are included with the
-  source and the built wheel.
-- **tesseract.js-core** `6.0.0` (`static/vendor/tesseract/core/*.wasm.js`) —
-  **Apache-2.0** (a compiled Emscripten build of **Tesseract OCR**, which itself
-  is Apache-2.0). The matching `core/LICENSE-APACHE-2.0.txt` is bundled.
-- **eng.traineddata** (`@tesseract.js-data/eng` **package** `1.0.0`, Tesseract
-  OCR **model variant** `4.0.0`) — **Apache-2.0** under the Tesseract OCR
-  project. The `eng.traineddata.gz` is the `4.0.0` LSTM model variant; the data
-  **package** version is `1.0.0`. These two numbers are intentionally distinct
-  (the npm package version versus the bundled Tesseract model variant).
+The [Commission copyright notice](https://commission.europa.eu/legal-notice_en)
+permits reuse of EU-owned website content under CC BY 4.0 unless otherwise
+indicated, with credit and an indication of changes. Preserve any export-specific
+notices and third-party exceptions. [CosIng](https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-ingredient-database_en)
+is informational; an ingredient's presence is not an approval or safety finding.
 
-The exact versions, upstream artifact URLs, models and SHA-256 values for every
-vendored file are recorded in
-`static/vendor/tesseract/vendor-manifest.json`. The reproducible
-acquisition/verification command is `tools/vendor_tesseract.py` (`--verify-only`
-checks the already-vendored tree without downloading). Redistribution must retain
-the relevant Apache-2.0 license/NOTICE text.
-Apache-2.0 license/NOTICE text.
+### EU legal text: REACH entry 70
 
----
+The supported cosmetic branches of REACH Annex XVII entry 70 use Commission
+Regulation (EU) 2024/1328, CELEX 32024R1328, published in the Official Journal
+on 17 May 2024. [Official act](http://data.europa.eu/eli/reg/2024/1328/oj).
+Attribution: European Union / Official Journal. The bounded machine-readable
+mapping and assessments are project adaptations.
 
-## Data
+Retained document SHA-256:
+`2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966`.
+Coverage requires the accepted document and compatible mapping in the snapshot.
+This is an amending act; source refresh requires checking subsequent amendments
+and corrigenda. It is not full REACH coverage and is not an ECHA export.
+See the [EUR-Lex reuse notice](https://eur-lex.europa.eu/content/legal-notice/legal-notice.html)
+and any document-specific notices before redistribution.
 
-The data shipped in this repository is **not** covered by the MIT license.
-Data licenses vary by source and are documented below. This file will grow
-each phase as the pipeline ingests official exports (Phase 1 onwards).
+### ECHA — excluded
 
-### EU CosIng (Cosmetic Ingredient Database)
+ECHA SVHC, Annex XIV and Annex XVII exports are not included. Acquisition and
+release guards remain disabled for these sources. ECHA has separate terms;
+MIT and the Commission's general reuse policy do not authorize ECHA-data reuse.
+The independent EU legal-act mapping above does not enable ECHA acquisition.
 
-- **Source:** European Commission CosIng Annex II–VI exports.
-- **License:** EU public-sector reuse policy. Requires **attribution** to the
-  European Commission and cites the source.
-- **Status:** Used for cosmetic substance annex data. Phase 1 fetches the
-  official export files (NOT scraped).
+### Legacy prototype data
 
-### ECHA (European Chemicals Agency)
+`data/eu_flags.json` contains curated prototype records, including some food
+additive references to Regulation (EC) No 1333/2008. It is not the verified
+production snapshot and does not establish food-screening support. Preserve
+its source citations and the applicable EU source notices. FDA and Proposition
+65 overlays are not claimed as implemented release datasets.
 
-- **Source:** SVHC Candidate List, Annex XIV (Authorisation), Annex XVII
-  (Restriction) packages.
-- **License:** ECHA's own terms of use. Must cite ECHA and follow its
-  reproduction policy.
-- **Status:** **NOT included in this release.** ECHA acquisition/ingestion is
-  deliberately deferred (per the project scope decision): we do not accept
-  ECHA's portal terms and no ECHA export has been downloaded or ingested.
-  ECHA-derived data is excluded from the shipped snapshot and the curated
-  Phase-0 prototype; the reuse terms are recorded here only so they are known
-  if ECHA coverage is later added. ECHA coverage is surfaced as a coverage gap /
-  "not included" — never as a clean result. Systematic scraping is prohibited
-  and is **not** used in this project.
+## Product data: Open Beauty Facts / Open Food Facts
 
-### Open Beauty Facts / Open Food Facts
+Product labels are obtained through the provider API and remain distinct from
+regulatory evidence. Keep the provider attribution, product link and retrieval
+time with reused records. The database is under ODbL 1.0; individual database
+contents are under the Database Contents License. Provider product images have
+separate Creative Commons Attribution-ShareAlike terms and may contain other
+protected elements. A user's own OCR upload does not become provider data.
 
-- **Source:** product database (Phase 4 barcode mode).
-- **License:** Open Database License **ODbL v1.0** (share-alike +
-  attribution).
-- **Status:** Consumed via the public API for product ingredient labels in
-  Phase 4.
+See the provider's [license guidance](https://openfoodfacts.github.io/openfoodfacts-server/api/tutorials/license-be-on-the-legal-side/)
+and [Open Beauty Facts terms](https://world.openbeautyfacts.org/terms-of-use).
+ODbL attribution and applicable share-alike obligations concern reused data;
+calling the API does not relicense this project's original code. This repository
+does not distribute a full product database. Do not label a combined dataset MIT.
 
-### Food additive data (Regulation (EC) No 1333/2008)
+## Vendored OCR dependencies
 
-- **Source:** EUR-Lex (EU law) — E-number authorisation details used for
-  "food vs cosmetic" gaps.
-- **License:** EU public-sector reuse; requires attribution.
+Browser OCR assets are bundled under
+`packages/scan-to-check/scan_to_check/static/vendor/tesseract/`:
 
-### EUR-Lex / Publications Office (Annex XVII & XIV — REACH)
+| Component | Pinned version | License |
+|---|---|---|
+| Tesseract.js | 6.0.1 | Apache-2.0 |
+| tesseract.js-core | 6.0.0 | Apache-2.0 |
+| English traineddata (`@tesseract.js-data/eng`) | package 1.0.0, model variant 4.0.0 | Apache-2.0 |
 
-- **Source:** EUR-Lex consolidated REACH Regulation (EC) No 1907/2006
-  (Annex XVII restrictions; Annex XIV authorisation) — an independent primary
-  source, distinct from ECHA-derived data.
-- **License:** EU public-sector reuse; requires attribution.
-- **Status (updated 2026-10-14):** **Partial, source-bound coverage.** An
-  independent public official-government-hosted OJ PDF of Commission Regulation
-  (EU) 2024/1328 (CELEX 32024R1328) was retained and verified
-  (SHA-256 `2ae8024b749623971c03967ba6b829e8abaa0285c8fee1b3e459c1a24d730966`).
-  That amending act implements REACH Annex XVII **entry 70** (D4/D5/D6). Entry 70
-  is implemented as a **source-bound mapping** gated on an accepted
-  source/mapping record in the snapshot `verified_sources`; it is not a full
-  Annex XVII or REACH coverage, and it is **not** an ECHA export. The retained
-  document is the amending act; the consolidated entry-70 text must be
-  re-verified for later amendments/corrigenda before a subsequent refresh
-  (recorded as a consolidation-check obligation). No ECHA portal terms were
-  accepted and no ECHA export was acquired.
-- **Annex XVII / XIV beyond entry 70:** remain `not_included` / unsupported and
-  are never presented as available or clean. No speculative Annex XVII parser was
-  built. ECHA acquisition/ingestion remains deliberately deferred.
+The vendor directory includes the Apache license and bundled dependency notices
+(`tesseract.min.js.LICENSE.txt`, `worker.min.js.LICENSE.txt` and the core license).
+Retain these files, including notices for embedded third-party components.
+`vendor-manifest.json` records exact upstream artifact URLs and SHA-256 hashes.
+Verify the retained files without downloading:
 
-### US FDA data (optional geographic overlays)
+```sh
+python3 tools/vendor_tesseract.py --verify-only
+```
 
-- **Source:** 21 CFR 189 / 21 CFR 172.
-- **License:** US government work (public domain).
-- **Status:** Optional overlay for the EU-vs-US gap matrix (Phase 1).
-
-### California Proposition 65
-
-- **Source:** State of California, OEHHA.
-- **License:** Public state data; cite as source.
-- **Status:** Optional overlay (Phase 1).
-
----
-
-> **Attribution requirement:** Any redistribution of the combined dataset must
-> retain attribution to the above sources and behave as a peer of ODbL /
-> EU-reuse-licensed data, not as a plain MIT-licensed dataset. This is
-> reinforced in `AGENTS.md` ground rule #5.
+Python runtime dependencies retain their own licenses in the installed packages
+and retained wheels. `deploy/runtime.lock` pins release-kit runtime versions;
+the generated release manifest records wheel hashes. Container base images and
+Caddy also retain their upstream licenses. Keep these notices when redistributing
+an assembled kit or image; this file is not a replacement for their full terms.

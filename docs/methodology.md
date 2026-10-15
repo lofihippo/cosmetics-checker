@@ -5,7 +5,7 @@ How the EU substance data is sourced, normalized, and made honest.
 ## Sources
 
 We ingest **official export / downloadable files only** — we do **not** scrape
-ECHA or any official website (AGENTS.md #4).
+ECHA or any official website.
 
 | Source | What it provides | How we get it |
 |--------|------------------|---------------|
@@ -267,7 +267,8 @@ carries:
 These condition fragments are preserved **verbatim** from the official export and
 are **not** parsed into a concentration verdict — an Annex III match means a
 restriction requires evaluation, not that a limit was exceeded. The source data
-needed for a future structured-formula milestone is retained.
+is retained for the supported, explicit formula mappings described in
+[formula evaluation](formula-evaluator.md).
 
 A substance subject to **both** an Annex II prohibition and an Annex III
 restriction keeps a **banned** headline (the strongest rule wins), while the
@@ -300,7 +301,7 @@ compliance determination. The pipeline treats them explicitly:
 * `determination` uses the strongest rule across all of a substance's rules:
   `banned > restricted > listed > allowed_with_conditions > unknown`.
 
-This milestone **adds source coverage and evidence** — it is **not** a general
+These lists **provide source coverage and evidence** — it is **not** a general
 positive-list compliance engine. The six Annex III numeric mappings are
 unchanged; for a substance with only a positive-list rule the formula evaluator
 returns `requires_manual_review` / `requires_context` and retains all rule

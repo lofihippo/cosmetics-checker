@@ -2,7 +2,7 @@
 
 Regulatory information, not legal advice.
 
-This describes the cosmetics-checker local-preview implementation, now carried forward from the initial Ing Checker import. The short entry point is the root README; package READMEs contain interface details.
+This describes the Cosmetics Checker local-preview implementation. The short entry point is the root README; package READMEs contain interface details.
 
 ## Data flow
 
@@ -25,7 +25,7 @@ The scanner adds an input step: a barcode retrieves a community product record, 
 - `packages/scan-to-check`: a separate FastAPI service calling the shared libraries directly. It is not an HTTP client of `eu-reg-api`. It owns the product-provider adapter and serves plain HTML/JavaScript, native camera barcode detection where available, Tesseract OCR and the PWA shell.
 - `eu_lint.py` and `app.py`: retained prototype and Streamlit demo. Their curated seed is not the authoritative production dataset. Food examples there do not make the scanner a food checker.
 
-This is a small Python monorepo, not a distributed service architecture. Two server entry points serve different audiences; both use the same libraries and snapshot. No React/Next.js, pandas, DuckDB or Typer migration is needed merely because those appeared in the original proposal.
+This is a small Python monorepo, not a distributed service architecture. Two server entry points serve different audiences; both use the same libraries and snapshot. The browser interfaces use plain JavaScript; parsing and evaluation live in Python.
 
 ## Identity and regulatory evidence
 
@@ -61,7 +61,7 @@ The CLI supports people doing batch checks and scripts consuming reports. A GitH
 
 ## Maintenance
 
-1. Read `AGENTS.md` and the current product scope; preserve user edits and the accepted snapshot.
+1. Read the [current product scope](product-scope.md); preserve user edits and the accepted snapshot.
 2. Reproduce a concrete problem before changing the engine. Keep legal interpretation in the shared backend.
 3. For a source change, verify current official text, amendments and reuse conditions, build an isolated candidate and retain the accepted baseline.
 4. Run focused regressions, then the relevant quality gate when code changes. Do not rerun the entire suite for prose-only edits.
