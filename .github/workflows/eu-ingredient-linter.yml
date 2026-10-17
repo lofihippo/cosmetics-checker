@@ -62,7 +62,7 @@ jobs:
   eu-ingredient-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         # A normal (non-privileged) checkout of the PR revision.
         with:
           fetch-depth: 1
@@ -151,7 +151,7 @@ jobs:
         # presents). A finding report still uploads while the job stays failed; a
         # precheck/operational failure does NOT upload a stale report.
         if: always() && steps.check.outputs.report-valid == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: eu-ingredient-report
           path: ${{ steps.check.outputs.report-path }}
