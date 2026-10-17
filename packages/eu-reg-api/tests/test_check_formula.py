@@ -397,3 +397,29 @@ def test_at_limit_body_is_accepted():
     r = cli.post("/v1/check-formula", content=body,
                  headers={"Content-Type": "application/json"})
     assert r.status_code == 200
+
+
+def test_deeply_nested_json_returns_structured_422():
+    # An unfinished 100k-bracket input stays under the independent body limit.
+    # Python 3.14's iterative decoder raises JSONDecodeError here; older
+    # decoders may raise RecursionError before reaching the missing value.
+    response = _client().post('/v1/check-formula', content='[' * 100_000,
+                              headers={'Content-Type': 'application/json'})
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'invalid_json'
+    assert response.json()['disclaimer'] == 'Regulatory information, not legal advice.'
+
+
+def test_json_decoder_recursion_error_returns_structured_422(monkeypatch):
+    import eu_reg_api.main as main
+
+    def exhausted_decoder(*args, **kwargs):
+        raise RecursionError('maximum recursion depth exceeded while decoding JSON')
+
+    client = _client()
+    with monkeypatch.context() as patch:
+        patch.setattr(main.json, 'loads', exhausted_decoder)
+        response = client.post('/v1/check-formula', content='[' * 100_000,
+                               headers={'Content-Type': 'application/json'})
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'invalid_json'

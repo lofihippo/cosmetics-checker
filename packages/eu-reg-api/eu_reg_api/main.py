@@ -487,7 +487,7 @@ def create_app(registry: Registry, metadata: Dict[str, Any] | None = None) -> Fa
         try:
             driven_raw = json.loads(body.decode("utf-8"), parse_float=Decimal,
                                     parse_int=Decimal)
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
             raise HTTPException(422, detail={
                 "code": "invalid_json",
                 "message": f"invalid JSON body: {exc}",
