@@ -1,0 +1,892 @@
+// Regulatory information, not legal advice.
+
+(() => {
+  const DISC = "Regulatory information, not legal advice.";
+
+  const el = (id) => document.getElementById(id);
+  const barcodeEl = el("barcode");
+  const ingredientsEl = el("ingredients");
+  const productCard = el("product-card"), resultsCard = el("results-card");
+  const productInfo = el("product-info"), resultsEl = el("results");
+  const lookupMsg = el("lookup-msg"), srcLink = el("src-link"),
+        srcLicenseLink = el("src-license-link"), srcTime = el("src-time");
+
+  // ---------------------------------------------------------------------
+  // Request lifecycle / state invalidation.
+  //
+  // ``gen`` is a monotonic generation counter. Every invalidation (edit,
+  // manual mode, new lookup, mode change) increments it, retires any pending
+  // request, clears incompatible findings + product provenance, and restores
+  // controls immediately. Every asynchronous continuation re-checks
+  // ``isCurrent(id)`` AFTER every await/async boundary before touching the
+  // UI, so a delayed callback (even one whose transport ignores AbortSignal)
+  // can never mutate state for a newer generation.
+  // ---------------------------------------------------------------------
+  let gen = 0;
+
+  // Input mode is separate from the fetched product category. ``product`` thus
+  // carries ``mode`` (how the text was obtained) and, when a product was fetched,
+  // ``product_type`` (the upstream category, only ever ``beauty`` for cosmetics).
+  // Manual/OCR text with NO fetched category is a distinct mode and reviewable.
+  let product = {};
+
+  function isCurrent(id) { return id === gen; }
+
+  function clearMsg() { lookupMsg.hidden = true; lookupMsg.textContent = ""; }
+  function clearResults() {
+    resultsEl.replaceChildren();
+    resultsCard.hidden = true;
+  }
+  function resetProductCard() {
+    productInfo.replaceChildren();
+    productInfo.dataset.name = ""; productInfo.dataset.brands = "";
+    productInfo.dataset.barcode = ""; productInfo.dataset.product_type = "";
+    productInfo.dataset.source_url = "";
+    productCard.hidden = true;
+  }
+
+  // Retire the current request generation and clear only the RESULT/view state.
+  // Keeps the product card + product provenance (so the user can keep editing the
+  // ingredient label). Used on an ingredient edit.
+  function retireResults() {
+    gen++;
+    clearMsg();
+    clearResults();
+    el("check-btn").disabled = false;
+    ingredientsEl.disabled = false;
+  }
+
+  // Centralized FULL invalidation: retire pending requests, clear incompatible
+  // results AND product provenance, restore controls, stop the camera. Used on
+  // a new lookup, manual mode, or camera start.
+  function invalidate() {
+    gen++;
+    product = {};
+    clearMsg();
+    clearResults();
+    resetProductCard();
+    ingredientsEl.disabled = false;
+    el("check-btn").disabled = false;
+    barcodeEl.disabled = false;
+    stopCamera();
+    cancelOcr();   // retire any in-flight OCR session + release the object URL
+  }
+
+  function showMsg(text, kind) {
+    lookupMsg.hidden = false;
+    lookupMsg.className = "msg " + (kind || "");
+    lookupMsg.textContent = text;
+  }
+
+  // ---------- safe DOM rendering (never innerHTML for upstream data) ----
+  function textNode(s) { return document.createTextNode(s == null ? "" : String(s)); }
+  function make(tag, cls, parent) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  // Only allow http(s) links.
+  function isHttpUrl(u) {
+    return typeof u === "string" && /^https?:\/\//i.test(u);
+  }
+  function safeLink(url, label) {
+    const a = document.createElement("a");
+    a.textContent = label || url;
+    if (isHttpUrl(url)) {
+      a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    } else {
+      a.href = "#"; a.title = "Invalid link (not rendered)";
+    }
+    return a;
+  }
+  function badge(cls, label, parent) {
+    const b = make("span", "badge " + cls, parent);
+    b.textContent = label;
+    return b;
+  }
+  function prodHeader(name, ptype) {
+    const d = make("div", "prod", productInfo);
+    const h = make("h2", null, d);
+    h.style.margin = ".1rem 0";
+    h.appendChild(textNode(name || "Unknown product"));
+    badge(ptype === "beauty" ? "beauty" : "manual", ptype === "beauty" ? "cosmetic" : (ptype || "manual"), h);
+    const meta = make("div", "meta", d);
+    meta.appendChild(textNode((product.brands || "brand unknown") + " · barcode " + (product.barcode || "—")));
+  }
+  function note(htmlMsg) {
+    // productInfo only ever receives plain text / built DOM here; no marks.
+    const d = make("div", "prod", productInfo);
+    d.appendChild(textNode(htmlMsg));
+  }
+
+  // ---------------------------------------------------------------------
+  // Products / lookup.
+  // ---------------------------------------------------------------------
+  async function lookup(e) {
+    e.preventDefault();
+    const id = ++gen;              // supersede any pending request
+    product = {};
+    clearMsg(); clearResults(); resetProductCard();
+    ingredientsEl.disabled = false;
+    stopCamera();                  // a new lookup retires an open camera session
+    const raw = barcodeEl.value.trim();
+    if (!/^\d+$/.test(raw) || raw.length < 8) {
+      showMsg("Enter a numeric barcode (8–14 digits).", "err");
+      return;
+    }
+    barcodeEl.disabled = true;
+    showMsg("Looking up " + raw + " …", "ok");
+    let resp;
+    try {
+      resp = await fetch("/api/product/" + encodeURIComponent(raw));
+    } catch (err) {
+      // The Python backend is an online dependency. A fetch failure means the
+      // backend is unavailable (the PWA shell is NOT a full offline checker);
+      // never fabricate a product or replay a cached finding.
+      if (isCurrent(id)) { barcodeEl.disabled = false; showMsg("Product service is offline — try manual ingredients.", "err"); }
+      return;
+    }
+    if (!isCurrent(id)) return;
+    barcodeEl.disabled = false;
+
+    let data;
+    try {
+      data = await resp.json();
+    } catch (err) {
+      // Malformed JSON body: never leave an old product/state visible.
+      if (isCurrent(id)) { clearResults(); resetProductCard(); showMsg("Lookup returned an unreadable response — try manual ingredients.", "err"); }
+      return;
+    }
+    if (!isCurrent(id)) return;
+    renderLookup(data, id);
+  }
+
+  // Render a typed lookup outcome. Only ever called while current.
+  function renderLookup(data, id) {
+    clearMsg();
+    const status = data && data.status;
+    const ptype = data && data.product_type;
+    if (status === "found_with_ingredients") {
+      product = { name: data.name, brands: data.brands, barcode: data.barcode,
+                  product_type: ptype, source_url: data.source_url, mode: "lookup" };
+      productInfo.dataset.name = data.name || "";
+      productInfo.dataset.brands = data.brands || "";
+      productInfo.dataset.barcode = data.barcode || "";
+      productInfo.dataset.product_type = ptype || "";
+      productInfo.dataset.source_url = data.source_url || "";
+      prodHeader(data.name || "Unknown product", ptype);
+      ingredientsEl.value = data.ingredients_text || "";
+      ingredientsEl.disabled = false;
+      showMsg("Product found. Review/edit the ingredient label before checking.", "ok");
+      productCard.hidden = false;
+    } else if (status === "not_found") {
+      clearResults(); resetProductCard();
+      productCard.hidden = false; note("Product not found in the product database. Paste ingredients manually below.");
+      ingredientsEl.value = ""; ingredientsEl.disabled = false;
+      showMsg("Product not found — paste ingredients manually below.", "err");
+      // Register a manual provenance (no fetched product). ``mode`` is the input
+      // method; there is NO product category, so cosmetic rules may be applied
+      // to the operator-supplied text.
+      product = { mode: "manual" };
+    } else if (status === "unsupported_product_category") {
+      clearResults(); resetProductCard();
+      productCard.hidden = false;
+      prodHeader(data.name || "Product", ptype);
+      ingredientsEl.value = data.ingredients_text || "";
+      // Non-cosmetic products are excluded from cosmetic checking entirely.
+      // The upstream category is retained explicitly so the API-level rejection
+      // is preserved (never silently treated as cosmetic text).
+      product = { product_type: ptype, mode: "lookup" };
+      ingredientsEl.disabled = true;
+      el("check-btn").disabled = true;
+      showMsg("This product is " + (ptype || "an unsupported category") + "; cosmetic regulatory rules are not applied here.", "err");
+    } else if (status === "found_without_ingredients") {
+      clearResults(); resetProductCard();
+      product = { name: data.name, brands: data.brands, barcode: data.barcode,
+                  product_type: ptype, source_url: data.source_url, mode: "lookup" };
+      productInfo.dataset.name = data.name || "";
+      productInfo.dataset.brands = data.brands || "";
+      productInfo.dataset.barcode = data.barcode || "";
+      productInfo.dataset.product_type = ptype || "";
+      productInfo.dataset.source_url = data.source_url || "";
+      productCard.hidden = false;
+      prodHeader(data.name || "Product", ptype);
+      ingredientsEl.value = data.ingredients_text || "";
+      ingredientsEl.disabled = false;
+      showMsg("Product found but has no ingredient list. Add ingredients manually (no concentration inferred).", "ok");
+    } else {
+      // upstream_error / malformed_response — show no product.
+      clearResults(); resetProductCard();
+      productCard.hidden = false; note("Lookup failed.");
+      ingredientsEl.value = ""; ingredientsEl.disabled = false;
+      showMsg(((data && data.error) || "Lookup failed") + " — no product loaded; paste ingredients manually.", "err");
+      product = { mode: "manual" };
+    }
+    renderAttribution(data);
+  }
+
+  function renderAttribution(data) {
+    const ptype = data && data.product_type;
+    const isBeauty = ptype === "beauty";
+    srcLink.href = "https://" + (isBeauty ? "beauty" : "world") + ".openfoodfacts.org";
+    srcLink.textContent = isBeauty ? "Open Beauty Facts" : "Open Food Facts / Open Beauty Facts";
+    srcLicenseLink.href = "https://opendatacommons.org/licenses/odbl/1-0/";
+    srcTime.textContent = (data && data.retrieved_at) ? "Retrieved " + data.retrieved_at : "";
+    el("src-lookup-attrib").hidden = false;
+    el("src-manual-attrib").hidden = true;
+  }
+
+  // Manual/OCR input has NO fetched product, so it must NOT claim its data came
+  // from Open Food Facts / Open Beauty Facts. Only lookup products retain the
+  // real upstream attribution; a general project/database credit stays visible.
+  function setAttributionForMode(mode) {
+    if (mode === "lookup") {
+      // Keep the last (lookup) attribution rendered by renderAttribution().
+      el("src-lookup-attrib").hidden = false;
+      el("src-manual-attrib").hidden = true;
+    } else {
+      el("src-lookup-attrib").hidden = true;
+      el("src-manual-attrib").hidden = false;
+    }
+  }
+
+  // Manual mode: a distinct, clearly-identified mode with NO fetched product
+  // provenance. Cosmetic rules may still be applied here because the operator
+  // is supplying cosmetic ingredients for review.
+  function manual() {
+    invalidate();
+    product = { mode: "manual" };
+    productCard.hidden = false;
+    ingredientsEl.disabled = false;
+    note("Manual ingredients (no product lookup).");
+    ingredientsEl.value = "";
+    srcLink.href = "https://world.openfoodfacts.org";
+    srcLicenseLink.href = "https://opendatacommons.org/licenses/odbl/1-0/";
+    srcTime.textContent = "";
+    setAttributionForMode("manual");
+    showMsg("Paste the ingredient label below, then check.", "ok");
+  }
+
+  // ---------------------------------------------------------------------
+  // Check.
+  // ---------------------------------------------------------------------
+  async function check() {
+    const id = ++gen;
+    clearMsg(); clearResults();
+    if (ingredientsEl.disabled) { showMsg("Cosmetic rules are not applied to non-cosmetic products.", "err"); return; }
+    const text = ingredientsEl.value;
+    if (!text.trim()) { showMsg("Enter ingredient text first.", "err"); return; }
+    el("check-btn").disabled = true;
+    showMsg("Checking …", "ok");
+    let resp;
+    try {
+      resp = await fetch("/api/check", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredients: text, product: currentProduct() }) });
+    } catch (err) {
+      if (isCurrent(id)) { el("check-btn").disabled = false; showMsg("Regulatory service is offline — no results produced.", "err"); }
+      return;
+    }
+    if (!isCurrent(id)) return;
+
+    let rep = null;
+    try {
+      rep = await resp.json();
+    } catch (err) {
+      if (isCurrent(id)) { el("check-btn").disabled = false; showMsg("Check returned an unreadable response.", "err"); }
+      return;
+    }
+    if (!isCurrent(id)) return;
+    el("check-btn").disabled = false;
+    if (!resp.ok) {
+      const d = rep && rep.detail;
+      showMsg((d && (d.message || d.detail)) || ("Check failed (HTTP " + resp.status + ")."), "err");
+      return;
+    }
+    renderResults(rep);
+    showMsg("Check complete. " + (rep.verdict || "") + " (snapshot " + (rep.snapshot_data_updated_at || rep.data_updated_at || "n/a") + ").", "ok");
+  }
+
+  function currentProduct() {
+    return product;
+  }
+
+  // ---------------------------------------------------------------------
+  // Evidence rendering (adapts the playground contract: direct + linked
+  // rules, membership, regulation, validated source link, snapshot timestamp,
+  // official reference separate from file-row locator, conditions,
+  // scope/exception text, expandable provenance).
+  // ---------------------------------------------------------------------
+  function dlFrom(entries, parent) {
+    const d = make("dl", null, parent);
+    entries.forEach(function (e) {
+      if (e[1] == null || e[1] === "") return;   // only show provided fields
+      make("dt", null, d).textContent = e[0];
+      const dd = make("dd", null, d);
+      dd.appendChild(textNode(e[1]));
+    });
+    return d;
+  }
+  function scopeText(rule) {
+    const src = (rule.raw && rule.raw.source_row) || {};
+    const name = (src["Chemical name / INN"] || "").toString().trim();
+    return name || null;
+  }
+  function condList(rule) {
+    return (rule.raw && rule.raw.conditions_list) || [];
+  }
+  function renderFinding(res, rule, parent, isLinked) {
+    const f = make("div", "rule", parent);
+    const annex = make("span", "annex", null);
+    annex.textContent = (isLinked ? "(linked group) " : "") + (rule.annex || "Annex unknown");
+    f.appendChild(annex);
+    const head = make("span", null, f);
+    head.appendChild(textNode(" · " + (rule.regulation || "regulation unknown")));
+    if (rule.status) head.appendChild(textNode(" · status " + rule.status));
+
+    const d = make("dl", null, f);
+    const url = rule.source_url;
+    const rows = [
+      ["Regulation", rule.regulation],
+      ["Official reference", rule.raw && (rule.raw.official_reference || rule.raw.reference_number)],
+      ["File-row reference", rule.raw && rule.raw.row_reference],
+      ["Source group", rule.raw && rule.raw.source_kind],
+      ["Source file", rule.raw && rule.raw.source_file],
+      ["Source SHA-256", rule.raw && rule.raw.source_sha256],
+      ["Snapshot data_updated_at", res.data_updated_at],
+      ["Upstream source_updated_at", rule.source_updated_at],
+      ["Source retrieval time", rule.raw && rule.raw.retrieved_at],
+      ["Resolution", rule.resolution],
+      ["Effective date", rule.effective_date],
+      ["Status", rule.status],
+    ];
+    rows.forEach(function (r) { if (r[1] != null && r[1] !== "") dlRow(d, r[0], r[1]); });
+    // Source link as a validated anchor.
+    if (url) {
+      const dt = make("dt", null, d); dt.textContent = "Source URL";
+      const dd = make("dd", null, d);
+      if (isHttpUrl(url)) dd.appendChild(safeLink(url, "open source"));
+      else dd.appendChild(textNode("(invalid link, not rendered)"));
+    }
+    const scope = scopeText(rule);
+    if (scope) dlRow(d, "Source scope / exception", scope, null);
+    const cList = condList(rule);
+    if (cList.length) {
+      const dt = make("dt", null, d); dt.textContent = "Conditions";
+      const dd = make("dd", null, d);
+      const ol = make("ol", "condition-list", dd);
+      cList.forEach(function (c) {
+        const li = make("li", null, ol);
+        li.appendChild(textNode((c.label || c.field || "Condition") + ": " + (c.value || "")));
+      });
+    } else if (rule.conditions) {
+      dlRow(d, "Conditions", rule.conditions, null);
+    }
+    if (!isLinked) return;
+
+    // Expandable provenance for linked rules.
+    const toggle = make("button", "source-toggle", f);
+    toggle.type = "button"; toggle.textContent = "Show source details";
+    const details = make("div", "source-details", f);
+    details.hidden = true;
+    dlFrom([
+      ["Official reference number", rule.raw && rule.raw.official_reference],
+      ["File-row reference", rule.raw && rule.raw.row_reference],
+      ["Resolution method", rule.resolution],
+      ["Source filename", rule.raw && rule.raw.source_file],
+      ["Source SHA-256", rule.raw && rule.raw.source_sha256],
+      ["source_updated_at", rule.source_updated_at],
+      ["retrieved_at", rule.raw && rule.raw.retrieved_at],
+      ["Conditions", rule.conditions],
+      ["Scope/exception", scopeText(rule)],
+    ], details);
+    toggle.addEventListener("click", function () {
+      details.hidden = !details.hidden;
+      toggle.textContent = details.hidden ? "Show source details" : "Hide source details";
+    });
+  }
+  function dlRow(d, k, v, rule) {
+    make("dt", null, d).textContent = k;
+    const dd = make("dd", null, d);
+    dd.appendChild(textNode(v));
+  }
+
+  function renderResults(rep) {
+    const h = make("h2", null, resultsEl);
+    h.textContent = "Results";
+    const p = make("p", "sub", resultsEl);
+    p.appendChild(textNode(
+      (rep.results || []).length + " ingredient(s) · " + (rep.n_flagged || 0) + " flagged · " +
+      (rep.n_banned || 0) + " banned · " + (rep.n_not_in_dataset || 0) + " not-in-dataset · " +
+      (rep.n_unverified || 0) + " unverified. Verdict: " + (rep.verdict || "") + "."));
+
+    for (const r of (rep.results || [])) {
+      const item = make("div", "result-item", resultsEl);
+      const h3 = make("h3", null, item);
+      h3.appendChild(textNode(r.cased_name || r.ingredient || ""));
+      const meta = make("div", "meta", item);
+      const parts = [];
+      if (r.determination) parts.push("determination " + r.determination);
+      if (r.status) parts.push("status " + r.status);
+      if (r.annex) parts.push("annex " + r.annex);
+      meta.appendChild(textNode(parts.join(" · ")));
+      if (r.evaluation) {
+        const ev = make("div", "meta", item);
+        ev.appendChild(textNode("Evaluation: " + r.evaluation + (r.evaluation_reason ? " — " + r.evaluation_reason : "")));
+      }
+      // Prominent user-facing interpretation derived from the SHARED assessment
+      // (never from the raw per-rule status alone). A scoped/exception-qualified
+      // prohibition is presented as scope-unresolved, not as an unconditional ban.
+      // An independent, source-bound CosIng determination takes headline priority
+      // over the supplementary REACH Annex XVII entry 70 (D4/D5/D6) finding, so a
+      // definitive CosIng prohibition is prominent; the entry-70 finding is
+      // rendered separately below. A retained, source-bound entry-70 finding is
+      // a restriction finding (identified-but-unevaluated on a label-only check),
+      // never a category violation and never an unverified "no verified rule".
+      const scopeUnresolved = r.prohibition_finding === "scope_unresolved";
+      const evalState = r.evaluation;
+      // Whether this ingredient carries a retained, source-bound entry 70
+      // finding. Declared here so the later "no verified rule" fallback (which
+      // must not say "no rule" when entry 70 is real evidence) can see it.
+      const e70 = r.entry70;
+      const hasEntry70 = e70 && e70.state &&
+        e70.state !== "not_entry70_substance" && e70.state !== "source_not_active";
+      if (r.prohibition_finding === "unambiguous" || evalState === "prohibition_identified") {
+        const hl = make("div", "meta headline", item);
+        hl.appendChild(textNode("Banned / prohibited by CosIng (Annex II). No concentration evaluation is applicable."));
+      } else if (scopeUnresolved || evalState === "restriction_identified" ||
+          evalState === "listing_identified") {
+        const hl = make("div", "meta headline", item);
+        if (scopeUnresolved) {
+          hl.appendChild(textNode(r.status === "banned"
+            ? "Prohibition scope unresolved." : "Exception requires review."));
+        } else if (evalState === "restriction_identified") {
+          hl.appendChild(textNode("Restriction identified (context required)."));
+        } else {
+          hl.appendChild(textNode("Listing identified (contextual review)."));
+        }
+      } else if (hasEntry70) {
+        const hl = make("div", "meta headline", item);
+        hl.appendChild(textNode("REACH Annex XVII entry 70 restriction identified (context required). No supported trigger is asserted; applicability requires the missing product/product-type/date context."));
+      }
+
+      // Explicit source-backed group membership.
+      (r.membership || []).forEach(function (m) {
+        const mm = make("div", "rule", item);
+        mm.appendChild(textNode("Group member of \"" + (m.group_name || m.group_id || "a group entry") +
+          "\" (Annex " + (m.annex || "?") + ", ref " + (m.official_reference || m.reference_number || "?") +
+          "). Group evidence is shown as linked — membership does not establish every condition applies."));
+      });
+
+      // Source-bound REACH Annex XVII entry 70 (D4/D5/D6): surface the
+      // identified-but-unevaluated restriction (label-only), clearly separate
+      // from the CosIng findings. Never a category violation by itself.
+      if (r.entry70) {
+        const r70 = r.entry70;
+        const e70Block = make("div", "rule entry70", item);
+        make("span", "annex", e70Block).textContent = "Annex XVII entry 70";
+        make("span", null, e70Block).textContent = " · " +
+          (r70.source && r70.source.regulation ? r70.source.regulation : "regulation unknown");
+        const d70 = make("dl", null, e70Block);
+        dlRow(d70, "Substance", (r70.substance_short ? "Substance " + r70.substance_short + " (D4/D5/D6)" : "—"));
+        dlRow(d70, "State", r70.state || "Not provided");
+        dlRow(d70, "Reason", r70.reason || "Not provided");
+        if (r70.threshold) dlRow(d70, "Market threshold", r70.threshold);
+        if (r70.effective_date) dlRow(d70, "Effective date", r70.effective_date);
+        if (r70.branch) dlRow(d70, "Applicable branch", r70.branch);
+        if (r70.source && r70.source.source_url && isHttpUrl(r70.source.source_url)) {
+          make("dt", null, d70).textContent = "Source URL";
+          const dd = make("dd", null, d70);
+          dd.appendChild(safeLink(r70.source.source_url, "open source"));
+        }
+      }
+
+      const direct = r.rules || [];
+      const linked = r.linked_rules || [];
+      // Do not collapse distinct rules by an incomplete display key; render each.
+      direct.forEach(function (rule) { renderFinding(r, rule, item, false); });
+      linked.forEach(function (rule) { renderFinding(r, rule, item, true); });
+      if (!direct.length && !linked.length && !hasEntry70) {
+        const miss = make("div", "rule missing", item);
+        miss.appendChild(textNode(r.is_in_dataset ? "Known identity, no verified rule" : "Not in dataset — not clean"));
+      }
+    }
+
+    const cov = rep.coverage || {};
+    const c = make("div", "attrib", resultsEl);
+    c.appendChild(textNode("Coverage: " + ((cov.available || []).join(", ") || "none") +
+      " — missing: " + ((cov.missing || []).join(", ") || "none") +
+      " — not included (deliberately deferred): " + ((cov.not_included || []).join(", ") || "none") +
+      ". " + (cov.note || "")));
+    const d = make("div", "attrib", resultsEl);
+    d.appendChild(textNode(DISC + "  Product provenance is separate from regulatory evidence."));
+    resultsEl.hidden = false;
+    resultsCard.hidden = false;
+  }
+
+  // ---------------------------------------------------------------------
+  // Camera barcode input (optional, capability-detected, local decoding).
+  // Uses the native BarcodeDetector API when available; manual entry is always
+  // the fallback. Decoding runs locally; frames are never uploaded.
+  //
+  // A "camera session" guard (``camSession``) spans acquisition, playback and
+  // detection. Cancellation, retry, a new session, a mode change/new lookup and
+  // page exit all RETIRE the current session. Every asynchronous continuation
+  // re-checks ``isCamCurrent(session)`` after every await/async boundary, so a
+  // late-acquired stream is stopped immediately, an old decode can neither
+  // mutate state nor stop a NEWER camera session, and at most one detection is
+  // in flight. A playback failure stops the tracks and never leaks an unhandled
+  // rejection.
+  // ---------------------------------------------------------------------
+  let cameraStream = null;
+  let rafId = 0;
+  let camSession = 0;
+
+  function isCamCurrent(id) { return id === camSession; }
+
+  // Retire the current camera session and release every resource. Used by
+  // stopCamera and by the owning decode continuation (after confirming it is
+  // still the current session).
+  function endCamera() {
+    camSession++;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(function (t) { t.stop(); });
+      cameraStream = null;
+    }
+    const v = el("camera");
+    if (v && v.srcObject) v.srcObject = null;
+  }
+
+  function stopCamera() {
+    endCamera();
+    el("camera-card").hidden = true;
+  }
+
+  async function startCamera() {
+    // Only start on user action.
+    if (!window.isSecureContext) {
+      showMsg("Camera scanning requires a secure context (https or localhost). Use manual entry.", "err");
+      return;
+    }
+    if (typeof window.BarcodeDetector !== "function") {
+      showMsg("This browser does not support the BarcodeDetector API. Use manual entry.", "err");
+      return;
+    }
+    const formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"];
+    let detector;
+    try {
+      detector = new BarcodeDetector({ formats: formats });
+    } catch (err) {
+      try { detector = new BarcodeDetector(); } catch (err2) {
+        showMsg("Could not initialise the barcode detector. Use manual entry.", "err");
+        return;
+      }
+    }
+    // Retire any pending lookup, any previous camera session and its stream
+    // BEFORE opening a new session.
+    invalidate();
+
+    const session = ++camSession;
+    const video = el("camera");
+    el("camera-card").hidden = false;
+    const status = el("cam-status");
+    status.textContent = "Requesting camera access…";
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (err) {
+      if (isCamCurrent(session)) {
+        showMsg("Camera access was denied or unavailable. Use manual entry.", "err");
+        el("camera-card").hidden = true;
+      }
+      return;
+    }
+    if (!stream) {
+      if (isCamCurrent(session)) el("camera-card").hidden = true;
+      return;
+    }
+    if (!isCamCurrent(session)) {
+      // Cancelled while permission was pending: stop the late stream NOW; the
+      // current (newer) session is untouched.
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      return;
+    }
+    cameraStream = stream;
+    video.srcObject = stream;
+    try {
+      await video.play();
+    } catch (err) {
+      // Playback failure: release the stream and the video resource. Guard the
+      // continuation so failure after cancellation never touches a newer session.
+      if (isCamCurrent(session)) {
+        endCamera();
+        el("camera-card").hidden = true;
+        showMsg("Camera stream could not start playback. Use manual entry.", "err");
+      }
+      return;
+    }
+    if (!isCamCurrent(session)) return;
+
+    let lastDecoded = null;
+    let lastDecodedAt = 0;
+    let detecting = false;
+    status.textContent = "Point the camera at a barcode…";
+
+    function tick() {
+      if (!isCamCurrent(session)) return;   // session retired: stop scheduling
+      rafId = requestAnimationFrame(tick);
+      if (!video.readyState || !video.videoWidth) return;
+      if (detecting) return;                 // at most one decode in flight
+      detecting = true;
+      detector.detect(video).then(function (codes) {
+        detecting = false;
+        if (!isCamCurrent(session)) return;  // old decode: never mutate/stop newer session
+        if (!codes || !codes.length) return;
+        const raw = (codes[0].rawValue || "").trim();
+        if (!raw) return;
+        const now = Date.now();
+        // Suppress duplicate dectections of the same value.
+        if (raw === lastDecoded && (now - lastDecodedAt) < 3000) return;
+        lastDecoded = raw; lastDecodedAt = now;
+        // Preserve the raw string (leading zeros). Stop THIS session on success.
+        endCamera();
+        el("camera-card").hidden = true;
+        barcodeEl.value = raw;
+        showMsg("Scanned barcode " + raw + ". Press Look up to find the product.", "ok");
+        // Feed decoded value through the existing lookup flow.
+        lookup(new Event("submit"));
+      }).catch(function () { detecting = false; /* per-frame decode errors are not fatal */ });
+    }
+    tick();
+  }
+
+  function registerCameraButtons() {
+    el("scan-btn").addEventListener("click", function () {
+      clearMsg();
+      startCamera();
+    });
+    el("cam-cancel").addEventListener("click", function () {
+      stopCamera();
+      showMsg("Camera scan cancelled. Use manual entry.", "ok");
+    });
+    el("cam-retry").addEventListener("click", function () { startCamera(); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Photo OCR (editable ingredient-label draft). Uses the vendored, PINNED
+  // Tesseract.js (v6.0.1) plus its tesseract.js-core and eng traineddata, all
+  // served under /static/vendor/tesseract/... so recognition runs locally and
+  // needs no third-party CDN at runtime. See vendor-manifest.json for exact
+  // versions, upstream URLs and SHA-256 values.
+  //
+  // The OCR LIFECYCLE is owned by a single controller (static/ocr.js): one
+  // selection identity binds the validated File + preview + recognition job,
+  // pending worker initialization and the resolved worker are owned/disposed
+  // correctly, and a late completion/error never touches a newer session. The
+  // worker is created lazily and REUSED for a retry within a session, then
+  // DISPOSED on any session change (new image, cancel, mode change, page exit)
+  // so no orphan worker accumulates.
+  //
+  // OCR is IMPERFECT: the recognized text is an EDITABLE DRAFT only. It is never
+  // silently submitted or fuzzy-corrected; the user must review/edit and then
+  // explicitly press Check. OCR provenance (``mode: "ocr"``) is kept separate
+  // from any fetched product provenance. Empty recognition is reported as
+  // "No text found" (never a successful ingredient extraction), and the language
+  // model is NOT cached in IndexedDB (cacheMethod 'none').
+  // ---------------------------------------------------------------------
+  const ocr = window.ScanToCheckOcr.create({
+    tesseract: window.Tesseract,
+    els: {
+      preview: el("ocr-preview"),
+      run: el("ocr-run"),
+      cancel: el("ocr-cancel"),
+      file: el("ocr-file"),
+    },
+    status: el("ocr-status"),
+    onChange: function (ev) {
+      if (ev && ev.state === "recognized") {
+        // A live recognition result is only delivered while the current
+        // selection/job is still current (guaranteed by the controller).
+        const text = ev.text || "";
+        // OCR output is an EDITABLE DRAFT. Fill the label and switch to an OCR
+        // provenance mode; the user must review/edit and press Check.
+        ingredientsEl.value = text;
+        ingredientsEl.disabled = false;
+        product = { mode: "ocr" };
+        productCard.hidden = false;
+        note("OCR draft (local recognition, imperfect). Review and edit before checking.");
+        srcLink.href = "https://world.openfoodfacts.org";
+        srcLicenseLink.href = "https://opendatacommons.org/licenses/odbl/1-0/";
+        srcTime.textContent = "";
+        setAttributionForMode("ocr");
+        el("check-btn").disabled = false;
+        el("ocr-card").hidden = true;      // collapse the OCR card after a draft
+        ocr.dispose();                     // no longer need the worker/selection
+        showMsg(ev.empty
+          ? "OCR produced no text. Use manual entry or try a clearer image; review/edit, then press Check."
+          : "OCR complete. Review/edit the ingredient label, then press Check.", ev.empty ? "err" : "ok");
+      }
+    },
+  });
+
+  function openOcr() {
+    // A new OCR session retires any pending request and any camera/OCR state.
+    invalidate();
+    ocr.open();
+    el("ocr-card").hidden = false;
+    showMsg("Select an ingredient-label image to recognize (OCR is imperfect).", "ok");
+  }
+
+  function runOcr() {
+    ocr.recognize().catch(function (err) {
+      // The controller already hardened the status; surface a concise global
+      // message (manual fallback stays available).
+      const msg = (err && err.message) || "unknown";
+      if (msg !== "OCR cancelled." && msg !== "OCR session changed.") {
+        showMsg("OCR failed (asset/network error): " + msg, "err");
+      } else if (msg === "OCR session changed.") {
+        return;
+      }
+    });
+  }
+
+  function cancelOcr() {
+    ocr.dispose();
+    el("ocr-card").hidden = true;
+  }
+
+  function registerOcrButtons() {
+    el("ocr-btn").addEventListener("click", function () { clearMsg(); openOcr(); });
+    el("ocr-file").addEventListener("change", function () {
+      const fileEl = el("ocr-file");
+      ocr.selectFile(fileEl.files && fileEl.files[0]);
+    });
+    el("ocr-run").addEventListener("click", runOcr);
+    el("ocr-cancel").addEventListener("click", function () {
+      cancelOcr();
+      showMsg("OCR cancelled.", "ok");
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Wiring.
+  // ---------------------------------------------------------------------
+  el("lookup-form").addEventListener("submit", lookup);
+  el("manual-btn").addEventListener("click", manual);
+  el("check-btn").addEventListener("click", check);
+  registerCameraButtons();
+  registerOcrButtons();
+  // Edits retire stale results + restore controls but keep the product provenance.
+  ingredientsEl.addEventListener("input", retireResults);
+  barcodeEl.addEventListener("input", invalidate);
+  // Stop the camera + retire OCR + release the worker on page exit.
+  window.addEventListener("pagehide", function () { stopCamera(); cancelOcr(); });
+  // Ctrl/Cmd+Enter checks.
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); check(); }
+  });
+
+  // ---------------------------------------------------------------------
+  // PWA shell registration + update flow.
+  //
+  // The service worker caches only the app SHELL (never API responses,
+  // regulatory findings, images or labels). An update is surfaced as a
+  // NON-BLOCKING banner; the user chooses when to reload, so an in-progress
+  // draft, image or recognition session is NOT silently dropped. The app asset
+  // version (CACHE_VERSION in sw.js) is independent of the regulatory snapshot
+  // timestamp (data_updated_at). See sw.js for the cache allowlist.
+  //
+  // Update policy:
+  //   * The worker NEVER calls skipWaiting() on install; a new worker stays
+  //     "waiting" until the user accepts. We register the reload intent BEFORE
+  //     posting SKIP_WAITING, so the controllerchange that follows always
+  //     triggers a real navigation.
+  //   * The banner is shown when a NEW worker is installed while a controller is
+  //     present. If a worker is ALREADY waiting (e.g. the banner was shown for a
+  //     prior update, or the page was refreshed mid-update), we surface it.
+  //   * controllerchange reloads ONLY when the user accepted; the flag is cleared
+  //     before reload so a later stale event cannot force another reload.
+  //   * "same activation already happened" race: if the worker is already
+  //     activated and controlling, clicking Reload navigates immediately (no
+  //     SKIP_WAITING needed).
+  // ---------------------------------------------------------------------
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;   // not a PWA context
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).then(function (reg) {
+      // Handle an ALREADY-waiting registration on load (refresh mid-update).
+      if (navigator.serviceWorker.controller && (reg.waiting || reg.installing)) {
+        showUpdateBanner(reg);
+      }
+      reg.addEventListener("updatefound", function () {
+        const w = reg.installing;
+        if (!w) return;
+        w.addEventListener("statechange", function () {
+          if (w.state === "installed" && navigator.serviceWorker.controller) {
+            // A NEW worker is installed while an old one controls the page.
+            showUpdateBanner(reg);
+          }
+        });
+      });
+    }).catch(function () { /* SW registration is non-critical for the first load */ });
+    // Listen for controllerchange once. Reload ONLY after the user accepted.
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (window.__reloadOnControllerChange) {
+        window.__reloadOnControllerChange = false;
+        window.location.reload();
+      }
+    });
+  }
+
+  function showUpdateBanner(reg) {
+    // Avoid duplicate banners in the same page load.
+    if (document.getElementById("update-banner")) return;
+    const card = make("div", "msg ok", el("lookup-msg").parentNode);
+    card.id = "update-banner";
+    card.appendChild(textNode("A new version is available. "));
+    const reloadBtn = document.createElement("button");
+    reloadBtn.type = "button";
+    reloadBtn.textContent = "Reload";
+    reloadBtn.style.marginLeft = ".5rem";
+    reloadBtn.addEventListener("click", function () {
+      // Register the reload intent BEFORE asking the worker to activate, so the
+      // controllerchange that follows triggers a real navigation.
+      window.__reloadOnControllerChange = true;
+      if (reg.waiting) {
+        // The worker is waiting: ask it to activate.
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      } else if (reg.installing) {
+        // The worker is still installing; wait for statechange to installed.
+        const w = reg.installing;
+        w.addEventListener("statechange", function onSt() {
+          if (w.state === "installed") {
+            w.removeEventListener("statechange", onSt);
+            if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      } else if (navigator.serviceWorker.controller &&
+                 navigator.serviceWorker.controller.state === "activated") {
+        // The new worker is ALREADY active and controlling (activation race): a
+        // controllerchange may have already fired or will not fire again, so
+        // navigate immediately.
+        window.__reloadOnControllerChange = false;
+        window.location.reload();
+      } else {
+        // No worker/controller context; reload the page directly.
+        window.__reloadOnControllerChange = false;
+        window.location.reload();
+      }
+    });
+    card.appendChild(reloadBtn);
+    setTimeout(function () {
+      // Auto-dismiss the banner after a while; do NOT reload automatically.
+      if (card.parentNode) card.parentNode.removeChild(card);
+    }, 15000);
+  }
+
+  registerServiceWorker();
+
+  // Honor a shortcut target "#manual" (opens manual mode).
+  if (window.location.hash === "#manual") { clearMsg(); manual(); }
+})();

@@ -297,3 +297,14 @@ python -m pytest packages/eu-reg-api/tests/test_formula_editor_frontend.py -q
 never a runtime dependency. Its tests drive an installed Chromium via
 `channel="chrome"` (system Chrome/Chromium) and do not download a browser
 binary. They do not touch the workspace snapshot.
+
+### Browser response headers
+
+HTML pages use `default-src 'self'` and `frame-ancestors 'none'`, with local
+scripts and no inline-script/eval allowance. All responses include
+`X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
+The built-in `/docs`, `/docs/oauth2-redirect` and `/redoc` routes are explicitly
+exempt from CSP because their CDN assets and inline bootstraps need it; they
+retain the other headers.
+
+Regulatory information, not legal advice.

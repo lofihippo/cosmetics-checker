@@ -31,7 +31,7 @@ from typing import Any, Dict, Optional
 
 from eu_ingredient_linter import DISCLAIMER, ingredient_report
 from eu_reg_lists import Registry, load
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -56,6 +56,8 @@ SHELL_HASH_PLACEHOLDER = "__SCAN_TO_CHECK_SHELL_HASH__"
 _SHELL_HASH_FILES = (
     "index.html",
     "ocr.js",
+    "scanner.js",
+    "scanner.css",
     "manifest.webmanifest",
     "icons/icon-192.png",
     "icons/icon-512.png",
@@ -95,6 +97,28 @@ def create_app(registry: Registry, client: Optional[OpenBeautyFactsClient] = Non
         description="Local barcode -> product ingredients -> existing checker.",
         version="0.1.0",
     )
+    # Swagger/ReDoc use CDN assets and inline bootstraps; explicitly exempt
+    # their built-in routes from CSP, while retaining the other headers.
+    @app.middleware("http")
+    async def browser_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        if (response.headers.get("content-type", "").startswith("text/html")
+                and request.url.path not in ("/docs", "/docs/oauth2-redirect", "/redoc")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'wasm-unsafe-eval'; "
+                "worker-src 'self' blob:; "
+                "connect-src 'self' blob:; "
+                "img-src 'self' blob: data:; "
+                "object-src 'none'; "
+                "base-uri 'none'; "
+                "frame-ancestors 'none'; "
+                "form-action 'self'; "
+            )
+        return response
+
     app.state.client = client or OpenBeautyFactsClient()
     app.state.snapshot = registry
     app.state.metadata = metadata or {}

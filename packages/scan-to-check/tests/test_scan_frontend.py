@@ -1668,3 +1668,16 @@ def test_ocr_recovery_after_asset_failure_retries_clean(page, server, tmp_path):
     assert page.evaluate("window.__ocr.workers") <= 2, page.evaluate("window.__ocr.workers")
     # The successful worker was disposed on the recognized-draft path.
     assert page.evaluate("window.__ocr.terminated") >= 1
+
+
+def test_csp_blocks_injected_inline_script(page, server):
+    response = page.goto(server)
+    assert "frame-ancestors 'none'" in response.headers['content-security-policy']
+    page.click('#manual-btn')  # The packaged application script still runs.
+    assert page.locator('#ingredients').is_visible()
+    assert page.evaluate('''() => {
+      const injected = document.createElement('script');
+      injected.textContent = 'window.__unexpectedInlineExecution = true';
+      document.body.appendChild(injected);
+      return window.__unexpectedInlineExecution === true;
+    }''') is False

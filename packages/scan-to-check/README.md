@@ -219,3 +219,19 @@ These exercise the real app with an injectable lookup client (no network) plus
 offline tests of the real client's parsing, and the real shared evaluation engine
 against the loaded snapshot. A one-off live demonstration against `3560070791460`
 was performed locally.
+
+### Browser response headers
+
+HTML pages use `default-src 'self'` and `frame-ancestors 'none'`. Scanner scripts
+and styles are packaged static files; scripts have no inline-script or general
+eval allowance. Local Tesseract OCR has the narrower `'wasm-unsafe-eval'`
+permission, `worker-src 'self' blob:` and local/blob connections; preview images
+allow local, blob and data URLs. The PWA caches and versions the extracted
+`scanner.js` and `scanner.css` alongside the existing shell assets.
+
+All responses include `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`. The built-in `/docs`, `/docs/oauth2-redirect` and
+`/redoc` routes are explicitly exempt from CSP for their CDN assets and inline
+bootstraps, while retaining the other headers.
+
+Regulatory information, not legal advice.

@@ -270,3 +270,26 @@ def test_check_parenthetical_ban_reaches_scanner(app_client):
     result = next(r for r in body['results'] if r['ingredient'] == 'zinc pyrithione')
     assert result['derived_from'] == 'fragrance (contains zinc pyrithione)'
     assert result['regulation'] and result['source_url'] and result['data_updated_at']
+
+
+def test_browser_security_headers_and_documentation_exemption(app_client):
+    client, _ = app_client
+    for path in ['/', '/static/index.html']:
+        response = client.get(path)
+        assert response.status_code == 200
+        csp = response.headers['Content-Security-Policy']
+        for directive in ["default-src 'self'", "frame-ancestors 'none'",
+                          "worker-src 'self' blob:", "'wasm-unsafe-eval'",
+                          "img-src 'self' blob: data:"]:
+            assert directive in csp
+        assert 'unsafe-inline' not in csp and "'unsafe-eval'" not in csp
+        assert response.headers['X-Content-Type-Options'] == 'nosniff'
+        assert response.headers['Referrer-Policy'] == 'no-referrer'
+        assert '<script>' not in response.text and '<style>' not in response.text
+    for path in ['/docs', '/docs/oauth2-redirect', '/redoc']:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'Content-Security-Policy' not in response.headers
+        assert response.headers['X-Content-Type-Options'] == 'nosniff'
+    for path in ['/static/scanner.js', '/static/scanner.css']:
+        assert client.get(path).status_code == 200

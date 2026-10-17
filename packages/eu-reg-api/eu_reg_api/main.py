@@ -310,6 +310,26 @@ def create_app(registry: Registry, metadata: Dict[str, Any] | None = None) -> Fa
             "compliance determination."
         ),
     )
+    # Swagger/ReDoc use CDN assets and inline bootstraps; explicitly exempt
+    # their built-in routes from CSP, while retaining the other headers.
+    @app.middleware("http")
+    async def browser_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        if (response.headers.get("content-type", "").startswith("text/html")
+                and request.url.path not in ("/docs", "/docs/oauth2-redirect", "/redoc")):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "img-src 'self' blob: data:; "
+                "object-src 'none'; "
+                "base-uri 'none'; "
+                "frame-ancestors 'none'; "
+                "form-action 'self'; "
+            )
+        return response
+
     app.state.snapshot = state
 
     # ---- browser playground (static assets from the installed package) ----

@@ -63,6 +63,8 @@ const CACHE = `${CACHE_NAMESPACE}scan-to-check-shell-${SHELL_HASH}`;
 const SHELL_ASSETS = [
   "/",
   "/static/ocr.js",
+  "/static/scanner.js",
+  "/static/scanner.css",
   "/manifest.webmanifest",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",

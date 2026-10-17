@@ -729,3 +729,20 @@ def test_check_parenthetical_ban_reaches_api():
     assert result['derived_from'] == 'parfum (contains benzene)'
     assert result['regulation'] and result['source_url']
     assert result['data_updated_at'] == DATA_UPDATED_AT
+
+
+def test_browser_security_headers_and_documentation_exemption():
+    client = _client()
+    for path in ['/', '/formula', '/static/index.html', '/static/formula.html']:
+        response = client.get(path)
+        assert response.status_code == 200
+        csp = response.headers['Content-Security-Policy']
+        assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
+        assert 'unsafe-inline' not in csp and "'unsafe-eval'" not in csp
+        assert response.headers['X-Content-Type-Options'] == 'nosniff'
+        assert response.headers['Referrer-Policy'] == 'no-referrer'
+    for path in ['/docs', '/docs/oauth2-redirect', '/redoc']:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'Content-Security-Policy' not in response.headers
+        assert response.headers['X-Content-Type-Options'] == 'nosniff'
