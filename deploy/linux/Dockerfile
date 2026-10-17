@@ -2,7 +2,7 @@
 # Regulatory information, not legal advice.
 # SNAPSHOT_BUNDLE is required and must name a file INSIDE that context.
 # See README.md for build commands and container-loopback networking.
-FROM python:3.14-slim
+FROM python:3.14.7-slim-trixie
 
 # Build-only tooling: the builder's only network step (downloading the pinned
 # runtime wheels) needs pip; building the four local wheels needs setuptools/
@@ -37,5 +37,12 @@ EXPOSE 8000 8010
 # (systemd / a process manager) runs these separately; this entrypoint is for
 # local container validation. The kit launchers live at /opt/release-kit.
 COPY deploy/linux/start.sh /usr/local/bin/start-eu-services.sh
+# Keep the installed code/snapshot root-owned, but readable by the runtime
+# identity. Only its home and ordinary temporary paths need to be writable.
+RUN groupadd --gid 10001 checker \
+    && useradd --uid 10001 --gid checker --create-home --shell /usr/sbin/nologin checker \
+    && chmod -R a+rX /opt/release-kit
+ENV PYTHONDONTWRITEBYTECODE=1
+USER 10001:10001
 WORKDIR /opt/release-kit
 CMD ["start-eu-services.sh"]

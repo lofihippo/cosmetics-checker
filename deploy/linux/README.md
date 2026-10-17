@@ -50,7 +50,11 @@ service's coverage rather than assuming every snapshot contains the same lists.
 
 ## Optional self-contained image
 
-The Dockerfile builds a kit into an image. Docker `COPY` needs a path **inside**
+The Dockerfile builds a kit into an image using `python:3.14.7-slim-trixie`
+([official image definitions](https://github.com/docker-library/official-images/blob/master/library/python)).
+The services run as UID/GID `10001:10001`, with root-owned, readable code and
+snapshot files. The full patch version is pinned; the tag and build tooling
+are still mutable, so this is not a digest-pinned/hermetic image. Docker `COPY` needs a path **inside**
 the build context; an absolute host path cannot be supplied directly:
 
 ```sh
