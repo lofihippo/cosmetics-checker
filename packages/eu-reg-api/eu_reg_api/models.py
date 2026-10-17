@@ -107,6 +107,7 @@ class CheckResultModel(BaseModel):
     """Per-ingredient result (mirrors linter's ``CheckResult.as_dict``)."""
 
     ingredient: str
+    derived_from: Optional[str] = None
     is_in_dataset: bool
     determination: str
     status: Optional[str] = None

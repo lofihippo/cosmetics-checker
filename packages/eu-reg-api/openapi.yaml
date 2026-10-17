@@ -450,6 +450,11 @@ components:
         ingredient:
           type: string
           title: Ingredient
+        derived_from:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Derived From
         is_in_dataset:
           type: boolean
           title: Is In Dataset

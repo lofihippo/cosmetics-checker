@@ -718,3 +718,14 @@ def test_formula_preserves_positive_list_evidence_without_numeric_judgment():
     assert e["numeric_comparison"] is None
     assert e["verdict"] in ("requires_context", "requires_manual_review")
     assert any(rule["annex"] in ("Annex IV", "Annex VI") for rule in e["rules"])
+
+
+def test_check_parenthetical_ban_reaches_api():
+    response = _client().get('/v1/check', params={'ingredients': 'Aqua, Parfum (contains Benzene)'})
+    assert response.status_code == 200
+    body = response.json()
+    assert body['n_banned'] == 1 and body['verdict'] == 'FLAGGED'
+    result = next(r for r in body['results'] if r['ingredient'] == 'benzene')
+    assert result['derived_from'] == 'parfum (contains benzene)'
+    assert result['regulation'] and result['source_url']
+    assert result['data_updated_at'] == DATA_UPDATED_AT

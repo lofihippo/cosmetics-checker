@@ -301,3 +301,16 @@ successful import; failed attempts are logged separately in
 
 Code is MIT. Data licenses vary by source (CosIng EU reuse+attribution, ECHA
 its own terms). See `LICENSES.md` and `docs/data-dictionary.md`.
+
+## Label parsing
+
+Balanced parentheses and square brackets preserve inner lists. Parenthetical
+substances are checked as extra candidates only when they resolve exactly;
+unresolved translations/descriptors do not increase the unknown count.
+Results record their parent in `derived_from`. Known slashed names stay whole;
+unknown slashed text is split. `may contain`, `peut contenir`, `+/-`, `[+/-]`
+and `(+/-)` sections are checked normally. Percentages are removed for matching.
+See [methodology](../../docs/methodology.md#label-tokenization) for malformed
+brackets, nested content, exact full names and nano-form handling.
+
+Regulatory information, not legal advice.

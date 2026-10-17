@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """eu_lint.py -- Phase 0 prototype EU ingredient linter.
 
+DEPRECATED: retained only for historical Phase-0/demo compatibility. Its legacy
+parenthetical tokenizer can omit ingredients; use eu_ingredient_linter for all
+label checks. See docs/methodology.md. Regulatory information, not legal advice.
+
 Single-file prototype that takes a raw ingredient string (or a file) and
 checks each token against a small curated EU-restriction dataset.
 

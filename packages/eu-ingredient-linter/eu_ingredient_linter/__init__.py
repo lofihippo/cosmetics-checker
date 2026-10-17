@@ -40,7 +40,7 @@ from eu_reg_lists.checker import banned_rule_is_unambiguous
 from eu_reg_lists.release_policy import coverage_dict
 
 from .formula import evaluate_formula as evaluate_formula, FormulaEvaluation as FormulaEvaluation
-from .tokenize import tokenize
+from .tokenize import LabelToken, tokenize, tokenize_candidates
 
 # List identifiers the registry *should* cover, and whether this snapshot does.
 SOURCE_KINDS = {
@@ -169,8 +169,10 @@ def ingredient_report(text: str, registry: Registry,
     # Resolve the effective snapshot timestamp up-front so the per-result and
     # report-level values are the SAME value (never None, never request time).
     effective_dt = _effective_data_updated_at(data_updated_at, registry)
-    tokens = (tokenize_fn(text, registry.phrases) if tokenize_fn
-              else _tokenize_label(text, registry))
+    candidates = ([LabelToken(t) for t in tokenize_fn(text, registry.phrases)]
+                  if tokenize_fn else tokenize_candidates(
+                      text, registry.phrases, lambda t: registry.lookup(t) is not None))
+    tokens = [t.text for t in candidates]
     results = check_list(tokens, registry, effective_dt)
     # A flag includes the ingredient's OWN rules AND any group *linked* rules
     # (explicit source-backed membership), so a member ingredient whose only
@@ -222,7 +224,8 @@ def ingredient_report(text: str, registry: Registry,
     if clean and not no_ingredients:
         verdict = "CLEAN"
     return {
-        "results": [r.as_dict() for r in results],
+        "results": [{**r.as_dict(), "derived_from": t.derived_from}
+                    for r, t in zip(results, candidates)],
         "tokens": tokens,
         "n_ingredients": len(results),
         "n_flagged": len(flagged),

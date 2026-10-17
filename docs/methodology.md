@@ -376,3 +376,41 @@ scope text, conditions, provenance) is preserved separately from the
 user-facing interpretation; a source prohibition is never erased just because
 its applicability is unresolved.
 
+
+## Label tokenization
+
+Regulatory information, not legal advice.
+
+The CLI, GitHub Action, API and scanner use the same label tokenizer and
+checking engine. Commas, semicolons, newlines and unprotected slashes split only
+outside balanced `()` / `[]`. Unmatched brackets are literal text and do not
+hide the rest of a label. Exact known names containing commas, ampersands or
+slashes are protected as whole phrases, longest match first; unknown slashed
+text retains the earlier split behavior. There is no fuzzy matching.
+
+`Parfum (Lilial)` retains `parfum` and checks `lilial` as a supplementary
+candidate. Nested bracket content and inner lists are checked too; leading
+`contains`, `contient` and `incl.` are stripped inside brackets. Only candidates
+that resolve unambiguously in the loaded registry enter the results and counts.
+Unresolved translations/descriptors add no extra unknown ingredients; they are
+not evidence of an unrestricted ingredient. A label consisting only of brackets
+uses their content as primary input, so unknown content remains unresolved.
+Empty brackets add no ingredient.
+
+Each result gains an optional `derived_from` field containing its normalized
+bracketed parent span (null for primary ingredients). Existing `tokens` remain
+strings and all other report fields retain their meanings. Recognized full
+bracketed names are retained, with their inner candidates also checked; `(nano)`
+and `[nano]` forms are never reduced to the bare substance. For example, the
+curated seed recognizes `aqua (water)` as a whole alias. Botanical descriptors
+otherwise leave the outer name (`Camellia Sinensis Extract`).
+
+`may contain`, `peut contenir`, `+/-`, `[+/-]` and `(+/-)` introduce ordinary
+checked ingredients, including CI colorants. They do not suppress findings.
+Percentages inside or outside brackets are removed for label matching; they
+are not used to infer a formula concentration.
+
+The root `eu_lint.py` and its Streamlit `app.py` consumer are **deprecated
+Phase-0 demonstrations**, retained for historical compatibility. Their legacy
+tokenizer is not the supported label-checking path and can omit parenthetical
+ingredients. Use `python -m eu_ingredient_linter` or the API/scanner instead.

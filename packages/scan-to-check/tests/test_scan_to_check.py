@@ -259,3 +259,14 @@ def test_products_not_checked_twice_by_frontend(client_snapshot):
     assert zinc["is_in_dataset"] is True
     assert zinc["status"] == "banned"
     assert any("Annex II" == rule.get("annex") for rule in zinc["rules"])
+
+
+def test_check_parenthetical_ban_reaches_scanner(app_client):
+    client, _ = app_client
+    response = client.post('/api/check', json={'ingredients': 'Aqua, Fragrance (contains Zinc Pyrithione)'})
+    assert response.status_code == 200
+    body = response.json()
+    assert body['n_banned'] == 1 and body['verdict'] == 'FLAGGED'
+    result = next(r for r in body['results'] if r['ingredient'] == 'zinc pyrithione')
+    assert result['derived_from'] == 'fragrance (contains zinc pyrithione)'
+    assert result['regulation'] and result['source_url'] and result['data_updated_at']

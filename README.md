@@ -79,3 +79,10 @@ Hosted snapshot publication and broader regulatory coverage remain deferred. No 
 ## Licenses
 
 Original code is [MIT](LICENSE). Data and vendored dependencies have separate attribution and reuse requirements; see [LICENSES.md](LICENSES.md). MIT does not relicense upstream data.
+
+Label checks include exactly resolved parenthetical candidates and “may contain”
+colorants; known slashed names stay whole. See [tokenization methodology](docs/methodology.md#label-tokenization).
+The root `eu_lint.py` / Streamlit demo is deprecated and retains a legacy
+tokenizer; use the shared CLI, API or scanner for label checks.
+
+Regulatory information, not legal advice.

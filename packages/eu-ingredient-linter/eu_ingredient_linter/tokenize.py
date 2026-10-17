@@ -1,117 +1,170 @@
-"""Punctuation-aware label tokenizer for eu-ingredient-linter.
+"""Shared deterministic label tokenizer; exact registry phrases, never fuzzy.
 
-This ports the deterministic, punctuation-safe normalisation from the Phase-0
-prototype (``eu_lint.tokenize``) so names containing ``,``/``&`` (e.g.
-``1,4-dioxane``, ``FD&C Red 40``) are kept whole instead of split on the comma.
-Exact alias matching only; never guesses.
-
-Order matters:
-  1. Decode HTML entities + collapse whitespace + lowercase (so ``FD&amp;C Red 40``
-     and ``FD&C  Red 40`` both become ``fd&c red 40``).
-  2. Protect recognised names containing ``,``/``&`` from being split.
-  3. Convert remaining ``&`` to commas, strip headers/parentheticals, split on
-     commas/semicolons/newlines.
+Balanced brackets delimit supplementary candidates. Unmatched brackets are
+literal characters. Iterative traversal also supports deeply nested labels.
 """
-
 from __future__ import annotations
 
 import html
 import re
-from typing import Dict, List, Optional, Sequence
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 _PERCENT_RE = re.compile(r"\b\d+(?:[.,]\d+)?\s*%")
-_PAREN_RE = re.compile(r"\s*\(.*?\)")
-_SLASH_RE = re.compile(r"\s*/\s*")
-_WS_RE = re.compile(r"[ \t]+")  # collapse only spaces/tabs; keep newlines
+_WS_RE = re.compile(r"[ \t]+")
 _HEADER_RE = re.compile(
     r"(?:active\s+|inactive\s+)?ingredients?\s*[:.]\s*"
     r"|\b(?:nutrition facts|more information|directions|storage)\b\s*[:.]\s*"
-    r"|\benriched with vitamins and minerals\b",
-    re.IGNORECASE,
+    r"|\benriched with vitamins and minerals\b", re.IGNORECASE,
 )
 _AMP_RE = re.compile(r"&\s*(?:amp|#0*38)?;?\s*", re.IGNORECASE)
-
-# Characters that, when inside a *known* ingredient phrase, would be broken by
-# naive comma-/"&"-splitting. Such phrases are protected before splitting.
-_NEEDS_PROTECT = (",", "&")
+_MAY_CONTAIN_RE = re.compile(
+    r"\b(?:may\s+contain|peut\s+contenir)\b\s*:?"
+    r"|\[\s*\+\s*/\s*-\s*\]\s*:?"
+    r"|\(\s*\+\s*/\s*-\s*\)\s*:?|\+\s*/\s*-\s*:?",
+    re.IGNORECASE,
+)
+_CONTAINS_RE = re.compile(r"^(?:(?:contains|contient)\b|incl\.)\s*:?\s*", re.I)
+_NANO_RE = re.compile(r"[\[(]\s*nano\s*[\])]")
+_NEEDS_PROTECT = (",", "&", "/", ";")
 _PLACEHOLDER = "\x00"
 
 
-def _protect_known_phrases(text: str, phrases: Sequence[str]) -> "tuple[str, Dict[str, str]]":
-    """Replace known ingredient phrases containing `,`/`&` with placeholders."""
-    low = text.lower()
-    n = len(text)
+@dataclass(frozen=True)
+class LabelToken:
+    text: str
+    derived_from: Optional[str] = None
+
+
+def _protect_known_phrases(text: str, phrases: Sequence[str]) -> tuple[str, Dict[str, str]]:
+    """Longest exact phrase protection via a trie, independent of phrase count.
+
+    Shield only separators, leaving brackets visible for candidate extraction.
+    Word boundaries prevent protecting a known phrase inside a different name.
+    """
+    trie: Dict[str, Any] = {}
+    for phrase in phrases:
+        node = trie
+        for char in phrase:
+            node = node.setdefault(char, {})
+        node[""] = phrase
+    mapping = {f"{_PLACEHOLDER}{ord(c)}{_PLACEHOLDER}": c for c in _NEEDS_PROTECT}
+    escapes = {v: k for k, v in mapping.items()}
     out: List[str] = []
-    mapping: Dict[str, str] = {}
     i = 0
-    while i < n:
-        matched = None
-        for ph in phrases:
-            if low.startswith(ph, i):
-                matched = ph
-                break
-        if matched:
-            token = f"{_PLACEHOLDER}{len(mapping)}{_PLACEHOLDER}"
-            mapping[token] = matched
-            out.append(token)
-            i += len(matched)
+    while i < len(text):
+        node = trie
+        end = i
+        if i == 0 or not text[i - 1].isalnum():
+            j = i
+            while j < len(text) and text[j] in node:
+                node = node[text[j]]
+                j += 1
+                if "" in node and (j == len(text) or not text[j].isalnum()):
+                    end = j
+        if end > i:
+            out.append("".join(escapes.get(c, c) for c in text[i:end]))
+            i = end
         else:
             out.append(text[i])
             i += 1
     return "".join(out), mapping
 
 
-def _restore_placeholders(text: str, mapping: Dict[str, str]) -> List[str]:
-    if not mapping:
-        return [text] if text else []
-    hits = re.findall(rf"{_PLACEHOLDER}\d+{_PLACEHOLDER}", text)
-    if not hits:
-        return [text] if text else []
-    restored = text
-    for hit in hits:
-        restored = restored.replace(hit, mapping[hit])
-    return [restored] if restored else []
-
-
 def _pre_normalize(text: str) -> str:
-    text = html.unescape(text)
-    text = text.replace("\xa0", " ")
-    text = text.lower()
-    text = _WS_RE.sub(" ", text)
-    return text.strip()
+    return _WS_RE.sub(" ", html.unescape(text).replace("\xa0", " ").lower()).strip()
 
 
-def _normalize_text(text: str) -> str:
-    text = text.replace("&nbsp;", " ")
-    text = _AMP_RE.sub(",", text)
-    text = _PERCENT_RE.sub(" ", text)
-    text = text.lower()
-    text = _WS_RE.sub(" ", text)
-    return text.strip()
+def _bracket_pairs(text: str) -> Dict[int, int]:
+    stack: List[int] = []
+    pairs: Dict[int, int] = {}
+    for i, char in enumerate(text):
+        if char in "([":
+            stack.append(i)
+        elif char in ")]":
+            if stack and text[stack[-1]] == {")": "(", "]": "["}[char]:
+                pairs[stack.pop()] = i
+            else:
+                # A mismatch invalidates open groups, not the following label.
+                stack.clear()
+    return pairs
 
 
-def _strip_header(line: str) -> str:
-    return _HEADER_RE.sub(" ", line)
+def tokenize_candidates(
+    text: str, phrases: Optional[Sequence[str]] = None,
+    resolves: Optional[Callable[[str], bool]] = None,
+) -> List[LabelToken]:
+    """Return primary tokens and exactly resolved supplementary candidates.
+
+    Without a registry callback, supplied phrases are the exact lookup set.
+    Unknown supplementary text is omitted; unknown primary text stays unknown.
+    A bracket-only label has primary content, so it cannot disappear as an
+    ignored translation. Known full bracketed names and nano forms stay intact.
+    """
+    known = {_pre_normalize(p) for p in (phrases or []) if p}
+    is_known = resolves if resolves is not None else known.__contains__
+    pre = _PERCENT_RE.sub(" ", _pre_normalize(text).replace(_PLACEHOLDER, " "))
+    pre = _MAY_CONTAIN_RE.sub(",", pre)
+    protect = [p for p in known if any(c in p for c in _NEEDS_PROTECT)]
+    protected, mapping = _protect_known_phrases(pre, protect)
+    norm = _HEADER_RE.sub(" ", _AMP_RE.sub(",", protected))
+    pairs = _bracket_pairs(norm)
+
+    def restore(value: str) -> str:
+        for key, char in mapping.items():
+            value = value.replace(key, char)
+        return _WS_RE.sub(" ", value).strip(" .,:;")
+
+    def split(start: int, end: int) -> List[tuple[int, int]]:
+        spans = []
+        i = begin = start
+        while i < end:
+            if i in pairs:
+                i = pairs[i] + 1
+                continue
+            if norm[i] in ",;\n/":
+                spans.append((begin, i))
+                begin = i + 1
+            i += 1
+        spans.append((begin, end))
+        return spans
+
+    tokens: List[LabelToken] = []
+    pending: List[tuple[int, int, Optional[str], bool]] = [(a, b, None, False) for a, b in reversed(split(0, len(norm)))]
+    while pending:
+        start, end, parent, in_brackets = pending.pop()
+        # Strip leading qualifiers only within bracket content.
+        if in_brackets:
+            while start < end and norm[start].isspace():
+                start += 1
+            match = _CONTAINS_RE.match(norm[start:end])
+            if match:
+                start += match.end()
+        pieces: List[str] = []
+        groups: List[tuple[int, int]] = []
+        i = begin = start
+        while i < end:
+            if i in pairs:
+                pieces.append(norm[begin:i])
+                groups.append((i + 1, pairs[i]))
+                i = pairs[i] + 1
+                begin = i
+            else:
+                i += 1
+        pieces.append(norm[begin:end])
+        full = restore(norm[start:end])
+        base = restore(" ".join(pieces))
+        primary = full if is_known(full) or _NANO_RE.search(full) else base
+        if primary and (parent is None or is_known(primary)):
+            tokens.append(LabelToken(primary, parent))
+        # An explicit stack avoids Python recursion limits on hostile labels.
+        origin = full if primary else parent
+        children = [(a, b, origin, True) for gstart, gend in groups
+                    for a, b in split(gstart, gend)]
+        pending.extend(reversed(children))
+    return tokens
 
 
 def tokenize(text: str, phrases: Optional[Sequence[str]] = None) -> List[str]:
-    """Split a normalised label into clean ingredient tokens (no fuzzy match)."""
-    if not text:
-        return []
-    pre = _pre_normalize(text)
-    protect = [p for p in (phrases or []) if any(c in p for c in _NEEDS_PROTECT)]
-    protect.sort(key=len, reverse=True)
-    protected, mapping = _protect_known_phrases(pre, protect)
-
-    norm = _normalize_text(protected)
-    tokens: List[str] = []
-    for line in re.split(r"\n", norm):
-        line = _strip_header(line)
-        for part in re.split(r"[,;]", line):
-            part = _PAREN_RE.sub("", part)
-            tok = part.strip(" .")
-            for sub in _SLASH_RE.split(tok):
-                sub = sub.strip(" .,")
-                if sub:
-                    tokens.extend(_restore_placeholders(sub, mapping))
-    return tokens
+    """Backward-compatible string tokens from the shared candidate parser."""
+    return [token.text for token in tokenize_candidates(text, phrases)]
