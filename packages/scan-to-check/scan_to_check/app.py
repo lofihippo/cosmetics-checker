@@ -25,13 +25,15 @@ plus two JSON endpoints: ``/api/lookup/<barcode>`` and ``/api/check``.
 
 from __future__ import annotations
 
+import json
+import math
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from eu_ingredient_linter import DISCLAIMER, ingredient_report
 from eu_reg_lists import Registry, load
-from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -39,6 +41,8 @@ from .obf import OpenBeautyFactsClient, validate_barcode
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 MAX_INGREDIENT_TEXT_LENGTH = 10_000
+MAX_CHECK_BODY_LENGTH = 200_000
+MAX_JSON_DEPTH = 32
 
 # PWA manifest content type (served at root scope so it is discoverable).
 MANIFEST_MEDIA_TYPE = "application/manifest+json"
@@ -86,6 +90,45 @@ def compute_shell_hash(static_dir: Path = STATIC_DIR,
     sw_template = (static_dir / "sw.js").read_text(encoding="utf-8")
     h.update(sw_template.encode("utf-8"))
     return h.hexdigest()[:16]
+
+
+async def _read_check_payload(request: Request) -> Dict[str, Any]:
+    """Bound raw bytes before JSON decoding, independent of Content-Length."""
+    chunks = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > MAX_CHECK_BODY_LENGTH:
+            raise HTTPException(422, detail={
+                "code": "request_too_large",
+                "message": f"request body exceeds {MAX_CHECK_BODY_LENGTH} bytes",
+            })
+        chunks.append(chunk)
+    try:
+        payload = json.loads(b"".join(chunks).decode("utf-8"))
+        # Bound nesting even on iterative JSON decoders. Product provenance is
+        # echoed in the response and must also be serializable without recursion
+        # errors or non-finite numbers (which are not valid JSON).
+        pending = [(payload, 0)]
+        while pending:
+            value, depth = pending.pop()
+            if depth > MAX_JSON_DEPTH:
+                raise ValueError(f"JSON nesting exceeds {MAX_JSON_DEPTH}")
+            if isinstance(value, dict):
+                pending.extend((v, depth + 1) for v in value.values())
+            elif isinstance(value, list):
+                pending.extend((v, depth + 1) for v in value)
+            elif isinstance(value, float) and not math.isfinite(value):
+                raise ValueError("JSON numbers must be finite")
+    except (ValueError, UnicodeDecodeError, RecursionError) as exc:
+        raise HTTPException(422, detail={
+            "code": "invalid_json", "message": "invalid JSON body or unsupported nesting",
+        }) from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(422, detail={
+            "code": "invalid_payload", "message": "request body must be an object",
+        })
+    return payload
 
 
 def create_app(registry: Registry, client: Optional[OpenBeautyFactsClient] = None,
@@ -197,8 +240,22 @@ def create_app(registry: Registry, client: Optional[OpenBeautyFactsClient] = Non
         result = app.state.client.lookup(barcode)
         return result.to_dict()
 
-    @app.post("/api/check")
-    def check(payload: Dict[str, Any] = Body(...)):
+    @app.post("/api/check", openapi_extra={
+        "requestBody": {"required": True, "content": {"application/json": {"schema": {
+            "type": "object", "required": ["ingredients"],
+            "properties": {
+                "ingredients": {"type": "string", "minLength": 1,
+                                "maxLength": MAX_INGREDIENT_TEXT_LENGTH},
+                "product": {"type": ["object", "null"], "properties": {
+                    "product_type": {"type": ["string", "null"],
+                                     "enum": ["beauty", "cosmetic", None]},
+                    "mode": {"type": ["string", "null"],
+                             "enum": ["manual", "ocr", "lookup", None]},
+                }},
+            },
+        }}}},
+    })
+    def check(payload: Dict[str, Any] = Depends(_read_check_payload)):
         """Reuse the shared evaluation engine on the user's reviewed ingredient text.
 
         This endpoint does NOT touch Open Beauty Facts. It validates the text and
@@ -212,7 +269,9 @@ def create_app(registry: Registry, client: Optional[OpenBeautyFactsClient] = Non
         if len(text) > MAX_INGREDIENT_TEXT_LENGTH:
             raise HTTPException(422, detail={"code": "too_long",
                                              "message": "ingredients text too long"})
-        product = payload.get("product") or {}
+        product = payload.get("product")
+        if product is None:
+            product = {}
         if not isinstance(product, dict):
             raise HTTPException(422, detail={"code": "invalid_product",
                                              "message": "product must be an object"})
@@ -234,6 +293,10 @@ def create_app(registry: Registry, client: Optional[OpenBeautyFactsClient] = Non
         # NO fetched product category (``product_type`` absent) is a distinct mode
         # and IS reviewable as cosmetic text.
         product_type = product.get("product_type")
+        if product_type is not None and not isinstance(product_type, str):
+            raise HTTPException(422, detail={
+                "code": "invalid_product_type", "message": "product_type must be a string or null",
+            })
         if isinstance(product_type, str) and product_type not in ("beauty", "cosmetic"):
             raise HTTPException(422, detail={
                 "code": "non_cosmetic_product",

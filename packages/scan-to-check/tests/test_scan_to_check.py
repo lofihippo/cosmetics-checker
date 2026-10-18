@@ -293,3 +293,80 @@ def test_browser_security_headers_and_documentation_exemption(app_client):
         assert response.headers['X-Content-Type-Options'] == 'nosniff'
     for path in ['/static/scanner.js', '/static/scanner.css']:
         assert client.get(path).status_code == 200
+
+
+@pytest.mark.parametrize('category', [False, 0, [], ['food'], {'category': 'food'}])
+def test_check_rejects_non_string_product_category(app_client, category):
+    client, _ = app_client
+    response = client.post('/api/check', json={'ingredients': 'Zinc Pyrithione',
+                                               'product': {'product_type': category}})
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'invalid_product_type'
+
+
+@pytest.mark.parametrize('product', [False, 0, [], ''])
+def test_falsy_product_is_not_silently_converted_to_manual(app_client, product):
+    client, _ = app_client
+    response = client.post('/api/check', json={'ingredients': 'Aqua', 'product': product})
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'invalid_product'
+
+
+@pytest.mark.parametrize('product', [None, {}, {'mode': 'manual'}, {'mode': 'ocr'},
+                                     {'product_type': None}, {'product_type': 'beauty'},
+                                     {'mode': 'lookup', 'product_type': 'cosmetic'}])
+def test_check_valid_optional_product_context(app_client, product):
+    client, _ = app_client
+    assert client.post('/api/check', json={'ingredients': 'Aqua', 'product': product}).status_code == 200
+
+
+def test_check_rejects_oversized_unrelated_body_before_engine(app_client, monkeypatch):
+    import scan_to_check.app as module
+    client, _ = app_client
+    def unexpected(*args):
+        pytest.fail('oversized request reached the checking engine')
+    monkeypatch.setattr(module, 'ingredient_report', unexpected)
+    response = client.post('/api/check', json={'ingredients': 'Aqua', 'unused': 'x' * 200_000})
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'request_too_large'
+
+
+def test_stream_limit_precedes_json_decoding_even_without_trusted_length(monkeypatch):
+    import asyncio
+    import scan_to_check.app as module
+    from starlette.requests import Request
+    from fastapi import HTTPException
+    received = []
+    async def receive():
+        received.append(True)
+        assert len(received) <= 3, 'reader continued after crossing the limit'
+        return {'type': 'http.request', 'body': b' ' * 80_000, 'more_body': True}
+    def unexpected(*args, **kwargs):
+        pytest.fail('oversized request reached JSON decoding')
+    monkeypatch.setattr(module.json, 'loads', unexpected)
+    for headers in [[], [(b'content-length', b'1')]]:
+        received.clear()
+        request = Request({'type': 'http', 'headers': headers}, receive=receive)
+        with pytest.raises(HTTPException) as error:
+            asyncio.run(module._read_check_payload(request))
+        assert error.value.detail['code'] == 'request_too_large'
+        assert len(received) == 3
+
+
+@pytest.mark.parametrize('body', [b'{bad', b'\xff', b'[' * 100_000,
+    b'{"ingredients":"Aqua","product":{"value":NaN}}',
+    b'{"ingredients":"Aqua","product":{"value":1e999}}',
+    b'{"ingredients":"Aqua","product":{"value":' + b'[' * 40 + b'0' + b']' * 40 + b'}}'])
+def test_check_rejects_invalid_json_and_excessive_nesting(app_client, body):
+    client, _ = app_client
+    response = client.post('/api/check', content=body, headers={'Content-Type': 'application/json'})
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'invalid_json'
+
+
+@pytest.mark.parametrize('payload', [[], 0, False, 'Aqua'])
+def test_check_requires_json_object(app_client, payload):
+    client, _ = app_client
+    response = client.post('/api/check', json=payload)
+    assert response.status_code == 422
+    assert response.json()['detail']['code'] == 'invalid_payload'

@@ -87,6 +87,14 @@ ingredient order.
   cosmetic). A manual/OCR draft with no fetched product category IS reviewable as
   cosmetic text; an explicit food/petfood/other product category is still rejected
   at `/api/check` so cosmetic rules are never applied to a non-cosmetic.
+- **Bounded check requests.** `/api/check` reads at most 200,000 raw bytes before
+  JSON decoding, regardless of Content-Length. JSON nesting is limited to 32
+  levels; malformed JSON and non-finite numbers return `422 invalid_json`.
+  The body must be an object; ingredient text is limited to 10,000 characters.
+  `product` must be an object or null; `product_type` must be a string or null.
+  Explicit categories other than `beauty` / `cosmetic` remain rejected.
+  Alias candidates for the same identity within one label span count once;
+  result cards show their parent label and additional matched names.
 - **Photo OCR (Tesseract.js, local).** Choose a JPEG/PNG ingredient-label image → it
   is previewed and recognized **locally** by the vendored, **pinned** Tesseract.js
   `v6.0.1` (+ `tesseract.js-core 6.0.0`, `eng` traineddata) under
