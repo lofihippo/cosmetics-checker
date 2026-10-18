@@ -746,3 +746,22 @@ def test_browser_security_headers_and_documentation_exemption():
         assert response.status_code == 200
         assert 'Content-Security-Policy' not in response.headers
         assert response.headers['X-Content-Type-Options'] == 'nosniff'
+
+
+def test_alias_candidates_count_once_and_retain_evidence():
+    response = _client().get('/v1/check', params={'ingredients': 'Parfum (Benzene, benzol)'})
+    assert response.status_code == 200
+    body = response.json()
+    assert body['n_candidates'] == 3
+    assert body['n_ingredients'] == 2 and body['n_banned'] == 1
+    result = body['results'][1]
+    assert result['derived_from'] == 'parfum (benzene, benzol)'
+    assert result['matched_aliases'] == ['benzol']
+    assert result['regulation'] and result['source_url'] and result['data_updated_at']
+
+
+def test_alias_deduplication_cannot_bypass_candidate_limit():
+    label = 'Benzene (' + ', '.join(['benzol'] * 200) + ')'
+    response = _client().get('/v1/check', params={'ingredients': label})
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'too_many_ingredients'

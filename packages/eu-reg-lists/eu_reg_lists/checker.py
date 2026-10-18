@@ -14,6 +14,7 @@ from typing import Any, List, Optional
 
 from .models import RANK, CheckResult, Rule, Substance
 from .registry import Registry
+from .tokenize import LabelToken, tokenize_candidates
 
 # Status ranks used to consolidate multiple rules into a headline status.
 _STRONGEST = RANK
@@ -259,13 +260,33 @@ def check_label(text: str, registry: Registry,
                 data_updated_at: Optional[str] = None) -> dict:
     """Check a whole label (list of tokens) and produce a summary dict.
 
-    ``tokenize_fn`` splits a raw label into tokens; it is optional so callers
-    may pass their own tokenizer. Import-level default lives in the caller.
+    The default uses the shared bracket-aware tokenizer. An explicitly supplied
+    ``tokenize_fn`` remains supported for compatibility.
     """
-    tokens = tokenize_fn(text, registry.phrases) if tokenize_fn else (
-        _split_raw(text, registry)
-    )
-    results = [check_token(t, registry, data_updated_at) for t in tokens]
+    if data_updated_at is None:
+        data_updated_at = registry.data_updated_at
+    candidates = ([LabelToken(t, group_id=i)
+                   for i, t in enumerate(tokenize_fn(text, registry.phrases))]
+                  if tokenize_fn else tokenize_candidates(
+                      text, registry.phrases, lambda t: registry.lookup(t) is not None))
+    tokens = [t.text for t in candidates]
+    results: List[CheckResult] = []
+    # Only collapse supplementary aliases within one label occurrence, using
+    # the exact resolved registry object (never CAS sharing or fuzzy names).
+    seen: dict[tuple[int, int], CheckResult] = {}
+    for candidate in candidates:
+        substance = registry.lookup(candidate.text)
+        identity = (candidate.group_id, id(substance))
+        if substance is not None and candidate.derived_from is not None and identity in seen:
+            result = seen[identity]
+            if candidate.text != result.ingredient and candidate.text not in result.matched_aliases:
+                result.matched_aliases.append(candidate.text)
+            continue
+        result = check_token(candidate.text, registry, data_updated_at)
+        result.derived_from = candidate.derived_from
+        results.append(result)
+        if substance is not None:
+            seen[identity] = result
     # A flag includes the ingredient's OWN rules AND any group *linked* rules
     # (explicit source-backed membership). A member ingredient whose only
     # evidence is a linked group rule is still a conditional/restricted finding,
@@ -307,6 +328,7 @@ def check_label(text: str, registry: Registry,
     return {
         "results": results,
         "tokens": tokens,
+        "n_candidates": len(tokens),
         "n_ingredients": len(results),
         "n_flagged": len(flagged),
         "n_banned": len(violated),
@@ -319,11 +341,3 @@ def check_label(text: str, registry: Registry,
         "data_updated_at": data_updated_at,
         "registry_size": len(registry),
     }
-
-
-def _split_raw(text: str, registry: Registry) -> List[str]:
-    """Minimal comma/semicolon splitter used when no tokenizer_fn is supplied."""
-    if not text:
-        return []
-    parts = [p.strip().lower() for p in text.replace("\n", ",").split(",")]
-    return [p for p in parts if p]

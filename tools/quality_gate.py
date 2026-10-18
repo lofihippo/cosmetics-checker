@@ -66,6 +66,7 @@ CORE_FILES = [
     "packages/eu-reg-lists/eu_reg_lists/checker.py",
     "packages/eu-reg-lists/eu_reg_lists/models.py",
     "packages/eu-reg-lists/eu_reg_lists/registry.py",
+    "packages/eu-reg-lists/eu_reg_lists/tokenize.py",
     "packages/eu-ingredient-linter/eu_ingredient_linter/__init__.py",
     "packages/eu-ingredient-linter/eu_ingredient_linter/tokenize.py",
     "packages/eu-ingredient-linter/eu_ingredient_linter/inputs.py",

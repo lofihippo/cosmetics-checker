@@ -464,14 +464,14 @@ def create_app(registry: Registry, metadata: Dict[str, Any] | None = None) -> Fa
                 "code": "no_ingredients",
                 "message": "no ingredient tokens parsed (empty/whitespace/tokenless)",
             })
-        if rep["n_ingredients"] > MAX_INGREDIENTS:
+        if rep["n_candidates"] > MAX_INGREDIENTS:
             raise HTTPException(422, detail={
                 "code": "too_many_ingredients",
                 "message": f"exceeds limit of {MAX_INGREDIENTS} ingredient tokens",
             })
         # Combine linter fields into the CheckResponse envelope.
         return CheckResponse(
-            results=rep["results"], tokens=rep["tokens"],
+            results=rep["results"], tokens=rep["tokens"], n_candidates=rep["n_candidates"],
             n_ingredients=rep["n_ingredients"], n_flagged=rep["n_flagged"],
             n_banned=rep["n_banned"], n_not_in_dataset=rep["n_not_in_dataset"],
             n_unverified_identity=rep["n_unverified_identity"],

@@ -158,10 +158,14 @@ class CheckResult:
     # own: a label-only check has no concentration/product-type context, so it
     # surfaces the entry-70 finding as identified-but-unevaluated.
     entry70: Optional[Dict[str, Any]] = None
+    derived_from: Optional[str] = None
+    matched_aliases: List[str] = field(default_factory=list)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "ingredient": self.ingredient,
+            "derived_from": self.derived_from,
+            "matched_aliases": list(self.matched_aliases),
             "is_in_dataset": self.is_in_dataset,
             "determination": self.determination,
             "status": self.status,

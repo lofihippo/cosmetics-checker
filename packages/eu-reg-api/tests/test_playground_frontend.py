@@ -553,3 +553,11 @@ def test_validation_submissions_leave_no_stale_results_and_enabled(page):
     assert cards == 0 and hidden is True
     assert "No ingredient tokens" in msg
     assert p.eval_on_selector("#check-btn", "el=>el.disabled") is False
+
+
+def test_alias_provenance_and_deduplicated_cards(page):
+    p, server = page
+    _run_check(p, server, 'Parfum (Benzene, benzol), Aqua (Water)')
+    assert p.locator('#ingredient-results .ingredient-card').count() == 3
+    assert p.locator('.candidate-origin').all_text_contents() == ['From label: parfum (benzene, benzol)']
+    assert p.locator('.candidate-aliases').all_text_contents() == ['Also named: benzol', 'Also named: water']

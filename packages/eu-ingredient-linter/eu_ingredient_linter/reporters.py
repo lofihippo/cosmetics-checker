@@ -576,6 +576,8 @@ def _ingredient_html(record: Dict[str, Any], heading: str,
     parts.append("<dl class='grid'>")
     fields = [
         ("submitted", record.get("ingredient")),
+        ("derived_from", record.get("derived_from")),
+        ("matched_aliases", ", ".join(record.get("matched_aliases") or [])),
         ("resolved_name", record.get("resolved_name")),
         ("resolution", record.get("resolution")),
         ("is_in_dataset", record.get("is_in_dataset")),

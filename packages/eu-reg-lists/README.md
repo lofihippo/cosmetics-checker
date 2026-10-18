@@ -78,3 +78,15 @@ substance's alias), it is rejected as ambiguous and resolves to `None`
 ## Licensing
 Code is MIT. Data licenses vary (CosIng = EU reuse/attribution, ECHA = its own
 terms) — see `LICENSES.md`.
+
+## Shared label checks
+
+`check_label(text, registry)` uses the same bracket-aware tokenizer and counts
+as the linter, API and scanner. Known punctuation and percentage-bearing names
+are protected before annotation cleanup. Supplementary aliases within one label
+span count once per exact registry identity; `matched_aliases` retains the other
+names and `derived_from` records the parent text. `tokens` / `n_candidates`
+retain all candidates; `results` / `n_ingredients` reflect deduplication.
+An explicit `tokenize_fn` remains supported for custom tokenization.
+
+Regulatory information, not legal advice.

@@ -383,6 +383,9 @@ components:
             type: string
           type: array
           title: Tokens
+        n_candidates:
+          type: integer
+          title: N Candidates
         n_ingredients:
           type: integer
           title: N Ingredients
@@ -430,6 +433,7 @@ components:
       required:
       - results
       - tokens
+      - n_candidates
       - n_ingredients
       - n_flagged
       - n_banned
@@ -455,6 +459,11 @@ components:
           - type: string
           - type: 'null'
           title: Derived From
+        matched_aliases:
+          items:
+            type: string
+          type: array
+          title: Matched Aliases
         is_in_dataset:
           type: boolean
           title: Is In Dataset

@@ -127,3 +127,36 @@ def test_qualifier_prefix_must_not_guess_a_substance(registry):
     # Only the documented abbreviation "incl." is a qualifier. A larger,
     # unresolved word beginning "incl" must not become a different identity.
     assert ingredient_report('Parfum (incllilial)', registry)['tokens'] == ['parfum']
+
+
+def test_supplementary_aliases_count_once_without_losing_candidates(registry):
+    report = ingredient_report('Lilial (Butylphenyl methylpropional)', registry)
+    assert report['tokens'] == ['lilial', 'butylphenyl methylpropional']
+    assert report['n_candidates'] == 2
+    assert report['n_ingredients'] == report['n_banned'] == report['n_flagged'] == 1
+    assert report['results'][0]['matched_aliases'] == ['butylphenyl methylpropional']
+    assert report['results'][0]['regulation'] and report['results'][0]['source_url']
+
+
+def test_distinct_occurrences_and_substances_are_not_merged(registry):
+    text = 'Parfum (Lilial, Butylphenyl methylpropional, Zinc Pyrithione), Lilial (Butylphenyl methylpropional)'
+    report = ingredient_report(text, registry)
+    assert report['n_candidates'] == 6
+    assert report['n_ingredients'] == 4 and report['n_banned'] == 3
+    assert report['results'][1]['derived_from'].startswith('parfum (')
+    assert report['results'][1]['matched_aliases'] == ['butylphenyl methylpropional']
+
+
+def test_nested_translation_aliases_count_once(registry):
+    report = ingredient_report('Water (Aqua (Eau)), Glycerin', registry)
+    assert report['n_candidates'] == 4 and report['n_ingredients'] == 2
+    assert report['results'][0]['matched_aliases'] == ['aqua', 'eau']
+    assert report['n_not_in_dataset'] == 0
+
+
+def test_forms_sharing_identifiers_remain_distinct():
+    reg = Registry([Substance(id='z', name='Zinc oxide', cas='1314-13-2'),
+                    Substance(id='zn', name='Zinc oxide (nano)', cas='1314-13-2')])
+    report = ingredient_report('Zinc oxide (contains Zinc oxide (nano))', reg)
+    assert report['n_ingredients'] == 2
+    assert all(not r['matched_aliases'] for r in report['results'])

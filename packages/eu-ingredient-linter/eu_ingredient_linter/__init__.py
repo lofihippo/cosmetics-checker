@@ -35,12 +35,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
-from eu_reg_lists import CheckResult, Registry, check_token
-from eu_reg_lists.checker import banned_rule_is_unambiguous
+from eu_reg_lists import CheckResult, Registry, check_label, check_token
 from eu_reg_lists.release_policy import coverage_dict
 
 from .formula import evaluate_formula as evaluate_formula, FormulaEvaluation as FormulaEvaluation
-from .tokenize import LabelToken, tokenize, tokenize_candidates
+from .tokenize import tokenize
 
 # List identifiers the registry *should* cover, and whether this snapshot does.
 SOURCE_KINDS = {
@@ -169,75 +168,10 @@ def ingredient_report(text: str, registry: Registry,
     # Resolve the effective snapshot timestamp up-front so the per-result and
     # report-level values are the SAME value (never None, never request time).
     effective_dt = _effective_data_updated_at(data_updated_at, registry)
-    candidates = ([LabelToken(t) for t in tokenize_fn(text, registry.phrases)]
-                  if tokenize_fn else tokenize_candidates(
-                      text, registry.phrases, lambda t: registry.lookup(t) is not None))
-    tokens = [t.text for t in candidates]
-    results = check_list(tokens, registry, effective_dt)
-    # A flag includes the ingredient's OWN rules AND any group *linked* rules
-    # (explicit source-backed membership), so a member ingredient whose only
-    # evidence is a linked group rule is a conditional/restricted/listing
-    # finding. ``listed`` (e.g. REACH SVHC Candidate List membership) is surfaced
-    # as listing evidence requiring contextual review; it is NOT a numeric
-    # restriction or a prohibition (so it is not counted in ``n_banned``).
-    # A retained, source-bound REACH Annex XVII entry 70 (D4/D5/D6) finding is
-    # ALSO a restriction finding: label-only evidence identifies the restriction
-    # and requires product context (never a category violation). It always
-    # counts toward ``flagged`` so a D5/D6 label is never presented as an
-    # unverified "no verified rule" identity, but it is NEVER counted in
-    # ``n_banned`` (it is not a demonstrated prohibition).
-    def _is_restriction_finding(r: CheckResult) -> bool:
-        if not r.is_in_dataset:
-            return False
-        if r.status in ("banned", "restricted", "listed",
-                        "allowed_with_conditions"):
-            return True
-        if any(lr.status in ("banned", "restricted", "listed",
-                             "allowed_with_conditions")
-               for lr in r.linked_rules):
-            return True
-        # Source-bound REACH Annex XVII entry 70 evidence: present and not
-        # refused/skipped (``not_entry70_substance`` / ``source_not_active``)
-        # identifies a restriction requiring context.
-        e70 = r.entry70 or {}
-        return bool(e70) and e70.get("state") not in (
-            "not_entry70_substance", "source_not_active")
-    flagged = [r for r in results if _is_restriction_finding(r)]
-    # ``n_banned`` counts only ingredients whose retained Annex II prohibition
-    # is UNAMBIGUOUS (no source scope/exception qualifier). A scoped prohibition
-    # (e.g. ``... when used as a substance in hair dye products``, or an
-    # exception referencing an Annex III entry) is still FLAGGED as evidence but
-    # is NOT counted as a definitive prohibition — its applicability is
-    # unresolved. This carries the formula-path distinction into the label path.
-    banned = [r for r in flagged
-              if (r.prohibition_finding == "unambiguous")
-              or any(lr.status == "banned"
-                     and banned_rule_is_unambiguous(lr)
-                     for lr in r.linked_rules)]
-    not_in = [r for r in results if not r.is_in_dataset]
-    unverified_id = [r for r in results if r.is_in_dataset and r.determination == "unknown"]
-    n_unverified = len(not_in) + len(unverified_id)
-    no_ingredients = len(results) == 0
-    clean = bool(flagged) is False and n_unverified == 0 and not no_ingredients
-    verdict = "FLAGGED" if flagged else ("NO-INGREDIENTS" if no_ingredients
-                                         else "NOT-FULLY-VERIFIED")
-    if clean and not no_ingredients:
-        verdict = "CLEAN"
+    report = check_label(text, registry, tokenize_fn, effective_dt)
     return {
-        "results": [{**r.as_dict(), "derived_from": t.derived_from}
-                    for r, t in zip(results, candidates)],
-        "tokens": tokens,
-        "n_ingredients": len(results),
-        "n_flagged": len(flagged),
-        "n_banned": len(banned),
-        "n_not_in_dataset": len(not_in),
-        "n_unverified_identity": len(unverified_id),
-        "n_unverified": n_unverified,
-        "clean": clean,
-        "verdict": verdict,
-        "no_ingredients": no_ingredients,
-        "data_updated_at": effective_dt,
-        "registry_size": len(registry),
+        **report,
+        "results": [r.as_dict() for r in report["results"]],
         "coverage": build_coverage(getattr(registry, "verified_sources", {}) or {}).to_dict(),
         "disclaimer": DISCLAIMER,
     }

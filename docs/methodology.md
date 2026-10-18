@@ -381,11 +381,11 @@ its applicability is unresolved.
 
 Regulatory information, not legal advice.
 
-The CLI, GitHub Action, API and scanner use the same label tokenizer and
-checking engine. Commas, semicolons, newlines and unprotected slashes split only
+The public `eu_reg_lists.check_label()` and `ingredient_report()` entry points,
+CLI, GitHub Action, API and scanner use the same label tokenizer and checking
+engine in `eu-reg-lists`. Commas, semicolons, newlines and unprotected slashes split only
 outside balanced `()` / `[]`. Unmatched brackets are literal text and do not
-hide the rest of a label. Exact known names containing commas, ampersands or
-slashes are protected as whole phrases, longest match first; unknown slashed
+hide the rest of a label. Exact known names containing commas, ampersands, slashes, periods or percent signs are protected as whole phrases, longest match first; unknown slashed
 text retains the earlier split behavior. There is no fuzzy matching.
 
 `Parfum (Lilial)` retains `parfum` and checks `lilial` as a supplementary
@@ -399,7 +399,12 @@ Empty brackets add no ingredient.
 
 Each result gains an optional `derived_from` field containing its normalized
 bracketed parent span (null for primary ingredients). Existing `tokens` remain
-strings and all other report fields retain their meanings. Recognized full
+strings; `n_candidates` counts those tokens. Within one primary label span,
+supplementary aliases resolving to the exact same registry identity count once
+in `results`, `n_ingredients` and finding counts. `matched_aliases` retains the
+additional names. Separate label occurrences and distinct registry identities
+(including nano forms sharing a CAS) remain separate. Browser cards and HTML
+reports show this provenance. Recognized full
 bracketed names are retained, with their inner candidates also checked; `(nano)`
 and `[nano]` forms are never reduced to the bare substance. For example, the
 curated seed recognizes `aqua (water)` as a whole alias. Botanical descriptors
@@ -407,8 +412,10 @@ otherwise leave the outer name (`Camellia Sinensis Extract`).
 
 `may contain`, `peut contenir`, `+/-`, `[+/-]` and `(+/-)` introduce ordinary
 checked ingredients, including CI colorants. They do not suppress findings.
-Percentages inside or outside brackets are removed for label matching; they
-are not used to infer a formula concentration.
+Percentage annotations inside or outside brackets are removed for label
+matching, after protecting exact registry names such as the conditional
+isobutane name containing `0,1%`. Known terminal periods, as in `Alcohol Denat.`,
+are retained. Percentages are not used to infer a formula concentration.
 
 The root `eu_lint.py` and its Streamlit `app.py` consumer are **deprecated
 Phase-0 demonstrations**, retained for historical compatibility. Their legacy

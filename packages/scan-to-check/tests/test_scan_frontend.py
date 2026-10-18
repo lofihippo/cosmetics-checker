@@ -1681,3 +1681,14 @@ def test_csp_blocks_injected_inline_script(page, server):
       document.body.appendChild(injected);
       return window.__unexpectedInlineExecution === true;
     }''') is False
+
+
+def test_alias_provenance_and_deduplicated_cards(page, server):
+    page.goto(server)
+    page.click('#manual-btn')
+    page.fill('#ingredients', 'Parfum (Benzene, benzol), Aqua (Water)')
+    page.click('#check-btn')
+    page.wait_for_selector('#results .result-item')
+    assert page.locator('#results .result-item').count() == 3
+    assert page.locator('.candidate-origin').all_text_contents() == ['From label: parfum (benzene, benzol)']
+    assert page.locator('.candidate-aliases').all_text_contents() == ['Also named: benzol', 'Also named: water']

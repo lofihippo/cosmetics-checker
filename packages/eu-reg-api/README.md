@@ -130,6 +130,10 @@ unrecognized name returns `404 unknown_list`.
   `ingredients` (via FastAPI query validation) **before** tokenization/linting,
   so a very long single token cannot bypass the token limit. Oversized input
   returns a structured `422`.
+- `tokens` and `n_candidates` retain all parsed candidates. `results` and
+  `n_ingredients` count supplementary aliases of the same registry identity
+  within one label span once; `matched_aliases` preserves their names and
+  `derived_from` identifies the parent span. Separate occurrences stay separate.
 - A separate documented limit of **200 ingredient tokens** is also enforced
   after parsing; exceeding it returns `422 too_many_ingredients`.
 - Empty, whitespace-only, and tokenless input still return `422 no_ingredients`.

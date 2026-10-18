@@ -748,3 +748,15 @@ def test_json_and_csv_keep_exclusions():
     assert js["coverage"]["not_included"] == ["echa-annex-xiv", "echa-annex-xvii", "echa-svhc"]
     csv_text = render(r, "csv")
     assert "echa-svhc" in csv_text
+
+
+def test_html_label_alias_provenance_is_escaped():
+    from eu_ingredient_linter import ingredient_report
+    report = ingredient_report('Parfum (Benzene)', _registry())
+    record = report['results'][-1]
+    record['derived_from'] = '<script>parent</script>'
+    record['matched_aliases'] = ['<img src=x onerror=alert(1)>']
+    html_text = render(report, 'html')
+    assert '&lt;script&gt;parent&lt;/script&gt;' in html_text
+    assert '&lt;img src=x onerror=alert(1)&gt;' in html_text
+    assert '<script>parent' not in html_text and '<img src=x' not in html_text

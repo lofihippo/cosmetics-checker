@@ -375,6 +375,12 @@
     var badgeCls = cls === "FLAGGED" ? "flag" : cls === "NOTFOUND" ? "notfound" : "unknown";
     header.appendChild(badgeClass(badgeCls, badgeLabel));
 
+    if (res.derived_from) {
+      el("p", "candidate-origin", card).textContent = "From label: " + res.derived_from;
+    }
+    if (res.matched_aliases && res.matched_aliases.length) {
+      el("p", "candidate-aliases", card).textContent = "Also named: " + res.matched_aliases.join(", ");
+    }
     var body = el("div", null, card);
     var bodyMsg;
     if (cls === "FLAGGED") {

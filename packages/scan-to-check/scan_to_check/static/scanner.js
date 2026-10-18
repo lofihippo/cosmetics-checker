@@ -424,6 +424,12 @@
       const item = make("div", "result-item", resultsEl);
       const h3 = make("h3", null, item);
       h3.appendChild(textNode(r.cased_name || r.ingredient || ""));
+      if (r.derived_from) {
+        make("p", "candidate-origin", item).textContent = "From label: " + r.derived_from;
+      }
+      if (r.matched_aliases && r.matched_aliases.length) {
+        make("p", "candidate-aliases", item).textContent = "Also named: " + r.matched_aliases.join(", ");
+      }
       const meta = make("div", "meta", item);
       const parts = [];
       if (r.determination) parts.push("determination " + r.determination);

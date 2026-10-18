@@ -108,6 +108,7 @@ class CheckResultModel(BaseModel):
 
     ingredient: str
     derived_from: Optional[str] = None
+    matched_aliases: List[str] = Field(default_factory=list)
     is_in_dataset: bool
     determination: str
     status: Optional[str] = None
@@ -149,6 +150,7 @@ class CheckResponse(BaseModel):
 
     results: List[CheckResultModel]
     tokens: List[str]
+    n_candidates: int
     n_ingredients: int
     n_flagged: int
     n_banned: int

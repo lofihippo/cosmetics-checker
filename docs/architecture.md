@@ -19,8 +19,8 @@ The scanner adds an input step: a barcode retrieves a community product record, 
 
 ## Packages and boundaries
 
-- `packages/eu-reg-lists`: dataclass models, exact identity/alias resolution, direct and group-linked rules, coverage and the entry-70 evaluator. SQLite and JSONL are alternative representations of the same normalized snapshot.
-- `packages/eu-ingredient-linter`: tokenization, label/batch reports, structured CSV/TSV/JSON inputs, formula evaluation and text/JSON/CSV/HTML/GitHub reporters. The CLI uses standard-library argparse. Reporters present assessments; they do not reinterpret legislation.
+- `packages/eu-reg-lists`: dataclass models, shared label tokenization and counts, exact identity/alias resolution, direct and group-linked rules, coverage and the entry-70 evaluator. SQLite and JSONL are alternative representations of the same normalized snapshot.
+- `packages/eu-ingredient-linter`: label/batch reports, structured CSV/TSV/JSON inputs, formula evaluation and text/JSON/CSV/HTML/GitHub reporters. The CLI uses standard-library argparse. Reporters present assessments; they do not reinterpret legislation.
 - `packages/eu-reg-api`: FastAPI/Pydantic request and response contracts, Uvicorn service, OpenAPI, static label and formula interfaces. It reads the loaded snapshot; requests do not refresh data.
 - `packages/scan-to-check`: a separate FastAPI service calling the shared libraries directly. It is not an HTTP client of `eu-reg-api`. It owns the product-provider adapter and serves plain HTML/JavaScript, native camera barcode detection where available, Tesseract OCR and the PWA shell.
 - `eu_lint.py` and `app.py`: deprecated prototype and Streamlit demo (historical compatibility only; use the shared linter for label checks). Their curated seed is not the authoritative production dataset. Food examples there do not make the scanner a food checker.
