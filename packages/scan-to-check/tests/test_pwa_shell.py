@@ -1,6 +1,5 @@
 """Installable PWA shell regressions for the scan-to-check app.
 
-Regulatory information, not legal advice.
 
 These drive a real Uvicorn app (in-memory registry, injectable mock product
 client, no network) against real Chrome and verify:

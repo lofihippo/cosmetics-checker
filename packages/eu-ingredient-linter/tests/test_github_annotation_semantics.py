@@ -1,6 +1,5 @@
 """Regression tests for GitHub annotation severity, file attribution and escaping.
 
-Regulatory information, not legal advice.
 
 These assert the documented annotation policy that the reusable Action relies on:
 an ``error`` is reserved for an unambiguous prohibition or a supported-limit

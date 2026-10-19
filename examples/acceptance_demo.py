@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Reproducible acceptance/demo for cosmetics-checker (original V1 goals).
 
-Regulatory information, not legal advice.
 
 This is the reproducibility layer for the original-project acceptance evidence.
 It runs the ACTUAL installed entry points as subprocesses with an explicit

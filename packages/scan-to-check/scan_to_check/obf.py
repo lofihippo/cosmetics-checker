@@ -1,6 +1,5 @@
 """Open Beauty Facts (and cross-database) barcode lookup adapter.
 
-Regulatory information, not legal advice.
 
 This is a small, bounded adapter for the Open Food Facts / Open Beauty Facts read
 API (v3). It performs NO regulatory matching and NO ingredient evaluation — it

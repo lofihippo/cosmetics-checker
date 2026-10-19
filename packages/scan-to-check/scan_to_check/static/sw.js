@@ -1,6 +1,5 @@
 /* Service worker for the scan-to-check PWA shell.
  *
- * Regulatory information, not legal advice.
  *
  * This service worker caches ONLY the application SHELL (the HTML, the OCR
  * controller, the small app JS/CSS and the PWA manifest/icons). It deliberately

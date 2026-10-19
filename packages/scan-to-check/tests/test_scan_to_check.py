@@ -1,6 +1,5 @@
 """Tests for the local scan-to-check lookup flow.
 
-Regulatory information, not legal advice.
 
 These run the REAL app (``create_app``) with a MOCK product-lookup client
 (no network) and the REAL shared evaluation engine (``eu_ingredient_linter``).

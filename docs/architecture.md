@@ -1,7 +1,5 @@
 # Architecture and maintenance
 
-Regulatory information, not legal advice.
-
 This describes the Cosmetics Checker local-preview implementation. The short entry point is the root README; package READMEs contain interface details.
 
 ## Data flow

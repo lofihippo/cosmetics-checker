@@ -1,33 +1,8 @@
-"""eu-ingredient-linter: check label/batch ingredients against an Annex-II registry.
+"""Label and batch reports over eu-reg-lists, with snapshot coverage.
 
-This is **Phase 2, scoped to Annex II + Annex III** (restricted). It provides:
-
- * ``ingredient_report`` / ``check_list`` — library API over ``eu_reg_lists``.
- * ``CoverageReport`` — states which EU annex/source lists are AVAILABLE
-   (Annex II, Annex III) vs MISSING (Annex IV–VI) vs NOT-INCLUDED (ECHA,
-   deliberately deferred) so a result is never
-   mistaken for a full regulatory determination.
- * A CLI (``python -m eu_ingredient_linter``) that reads a single label or a
-   batch file and prints a human/JSON report.
-
-Honesty rules (project policy):
- * Every rule carries a ``regulation``, ``source_url``, ``source_updated_at``
-   and an explicit ``resolution``; official Reference Numbers are preserved
-   separately from file row positions.
- * An unmatched / unresolved / recognised-but-unverified ingredient has
-   ``determination == "unknown"`` and is NEVER reported as an affirmative
-   "OK" / "clean".
- * Annex II and Annex III are covered; Annex IV–VI are reported as MISSING and
-   ECHA as NOT-INCLUDED (deliberately deferred) — both are coverage gaps/scope
-   exclusions, not a clean result.
- * An Annex III restriction carries its conditions (product types,
-   concentration limits, other restrictions, warnings) which are surfaced but
-   NOT evaluated into a concentration verdict.
- * "Regulatory information, not legal advice."
-
-The three substances reconciled as ambiguous/conflicting during ingestion are
-left OUT of verified rules (they remain ``unknown``); they are not presented
-here as proven violations.
+The shared checker resolves exact identities and aliases, retains rule citations
+and distinguishes unknown identities from verified findings. Formula evaluation
+is exported from .formula; coverage policy lives in eu_reg_lists.release_policy.
 """
 
 from __future__ import annotations

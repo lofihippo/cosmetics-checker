@@ -1,6 +1,5 @@
 """Compatibility imports for the single tokenizer in eu_reg_lists.
 
-Regulatory information, not legal advice.
 """
 from eu_reg_lists.tokenize import LabelToken, tokenize, tokenize_candidates
 

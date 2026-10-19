@@ -1,26 +1,9 @@
-"""Local barcode -> product lookup -> editable label -> existing checker app.
+"""Scanner service: product lookup, reviewed labels and the browser app.
 
-Regulatory information, not legal advice.
-
-This is a small local vertical slice (the first scanner milestone), NOT a full
-PWA. It:
-
-  * looks up a barcode via the bounded Open Beauty Facts read adapter
-    (``obf.py``) and never does regulatory matching in frontend code;
-  * lets the user review/edit the product's ingredient text (manual paste is the
-    fallback when lookup fails);
-  * submits the exact reviewed text to the EXISTING shared evaluation engine
-    (``eu_ingredient_linter.ingredient_report``) -- no duplicate
-    matching/tokenization/evaluation, no concentration inference from order;
-  * keeps product provenance separate from regulatory provenance/timestamp.
-
-The snapshot is a SUPPORTED registry loaded once (``eu_reg_lists.load``); the
-app never fetches/normalizes/mutates it. Unknown/unmatched ingredients stay
-unknown; no clean/safe/legal certificate is ever emitted.
-
-This module reuses the proven request-generation/validation pattern. The client
-is injectable so tests never hit the network. It serves a single-page static UI
-plus two JSON endpoints: ``/api/lookup/<barcode>`` and ``/api/check``.
+Loads a read-only registry once and delegates label checks to ingredient_report.
+The product client is injectable for offline tests. Product provenance remains
+separate from regulatory evidence. Static routes serve camera/OCR controls and
+the PWA shell; /api/product/{barcode} and /api/check handle submitted input.
 """
 
 from __future__ import annotations

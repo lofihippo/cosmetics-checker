@@ -1,6 +1,5 @@
 """REACH Annex XVII entry 70 — bounded, source-bound applicability evaluator.
 
-Regulatory information, not legal advice.
 
 Scope
 -----

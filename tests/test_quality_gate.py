@@ -1,6 +1,5 @@
 """Command-level regressions for the quality gate (tools/quality_gate.py).
 
-Regulatory information, not legal advice.
 
 These are SMALL, isolated tests. They build a tiny throwaway project in a temp
 dir and invoke the REAL ``tools/quality_gate.py`` orchestrator against it (via

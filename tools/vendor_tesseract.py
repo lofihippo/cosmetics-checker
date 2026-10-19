@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Acquire and verify the pinned Tesseract.js OCR assets.
 
-Regulatory information, not legal advice.
 
 Downloads the exact pinned, versioned npm artifacts from the standard npm/unpkg
 CDN into ``packages/scan-to-check/scan_to_check/static/vendor/tesseract/`` and

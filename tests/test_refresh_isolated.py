@@ -1,6 +1,5 @@
 """Isolated unattended snapshot restore/refresh/validate/bundle regressions.
 
-Regulatory information, not legal advice.
 
 These exercise the REAL maintained orchestration script
 (``data/scripts/refresh_isolated.py``) end to end against small, clearly-marked

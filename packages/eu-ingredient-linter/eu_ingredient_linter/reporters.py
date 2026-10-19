@@ -1,29 +1,8 @@
-"""Cited CSV/HTML/text reporters for eu-ingredient-linter reports.
+"""Render label, batch and formula reports as text, JSON, CSV, HTML or GitHub annotations.
 
-``render(report, out_format)`` renders an existing report (from the label,
-newline-batch, or structured-formula modes) into ``text``, ``json``, ``csv`` or
-``html``. It NEVER reclassifies ingredients: it renders the rules / verdicts /
-determinations already produced by :mod:`eu_ingredient_linter.formula` or the
-label/batch report functions. Changing the output format never changes the
-evaluation or the exit status.
-
-Every evidence row carries the regulation reference, source URL, snapshot
-``data_updated_at``, official reference, file-row locator and available
-provenance. ``source_updated_at`` (upstream pub/update time) and ``retrieved_at``
-(download time) are kept distinct from the report/snapshot ``data_updated_at``
-and from each other.
-
-CSV uses a documented, deterministic flat schema (one row per ingredient-rule
-evidence; a row is also emitted for an unknown/unverified ingredient with no
-rules). Nested/list values are serialised as JSON inside quoted cells so no
-evidence is lost merely because CSV is flat.
-
-HTML is a standalone printable document with embedded CSS and no external
-runtime dependency. User/source text and URLs are escaped; link schemes are
-validated. It preserves unknown and unresolved states and never turns a
-numeric-within-limit or exit-0 into "clean/compliant".
-
-``Regulatory information, not legal advice.``
+Formatting preserves evaluations and citations. CSV uses one row per rule plus
+rows for unknown ingredients and metadata. HTML escapes source text and validates
+link schemes; GitHub annotations escape workflow-command syntax.
 """
 
 from __future__ import annotations

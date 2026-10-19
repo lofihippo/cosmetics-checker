@@ -1,6 +1,5 @@
 """Release-boundary regression tests: ECHA deferral, coverage, and distribution.
 
-Regulatory information, not legal advice.
 
 These use ONLY synthetic markers under a ``data/raw/echa-*`` dir (never real
 ECHA data) to verify that a deferred ECHA source is never treated as available

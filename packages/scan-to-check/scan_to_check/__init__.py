@@ -1,6 +1,5 @@
 """scan-to-check: local barcode -> product ingredients -> existing checker.
 
-Regulatory information, not legal advice.
 """
 
 from __future__ import annotations

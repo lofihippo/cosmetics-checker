@@ -575,7 +575,9 @@ def test_direct_rule_renders_official_ref_and_snapshot(page, server):
     _lookup(page)
     _check(page, "Benzene")
     body = page.text_content("#results")
-    assert "regulatory information, not legal advice" in body.lower()
+    # The shared page footer supplies the notice once, including after a check.
+    page_text = page.locator("body").inner_text().lower()
+    assert page_text.count("regulatory information, not legal advice.") == 1
     assert "Snapshot data_updated_at" in body
     assert "Official reference" in body
     assert "File-row reference" in body

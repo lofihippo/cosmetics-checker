@@ -1,6 +1,5 @@
 """Tests for the source-bound REACH Annex XVII entry 70 cosmetic evaluator.
 
-Regulatory information, not legal advice.
 """
 from __future__ import annotations
 

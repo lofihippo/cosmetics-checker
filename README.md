@@ -2,7 +2,7 @@
 
 Check cosmetic ingredient labels against a versioned EU regulatory snapshot. Paste a label, review a barcode lookup or photo-OCR draft, or supply a formula with explicit concentrations. Results show matched rules, conditions, sources and what remains unknown.
 
-**Regulatory information, not legal advice.** A flag is not necessarily a demonstrated violation. No match is not proof of safety, and this is not a complete product compliance assessment.
+**Regulatory information, not legal advice.** Results identify covered rules and unresolved context; they do not establish full product compliance.
 
 <table>
   <tr>
@@ -10,8 +10,8 @@ Check cosmetic ingredient labels against a versioned EU regulatory snapshot. Pas
     <th>Barcode, photo OCR &amp; manual input</th>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="docs/images/app-screenshot.jpg" alt="Cosmetics Checker running locally in the browser, showing snapshot coverage and ingredient input. Regulatory information, not legal advice." width="100%"></td>
-    <td width="50%" valign="top"><img src="docs/images/scanner-screenshot.jpg" alt="Scanner interface showing Look up, Scan barcode, Use photo OCR, Use manual ingredients, and Check ingredients controls. Regulatory information, not legal advice." width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/images/app-screenshot.jpg" alt="Ingredient checker showing snapshot coverage and label input." width="100%"></td>
+    <td width="50%" valign="top"><img src="docs/images/scanner-screenshot.jpg" alt="Scanner with barcode lookup, photo OCR and manual input." width="100%"></td>
   </tr>
 </table>
 
@@ -21,7 +21,7 @@ This project provides a local desktop preview. Public hosting and physical-devic
 
 The accepted local snapshot contains CosIng Annex II–VI and the supported cosmetic branches of REACH Annex XVII entry 70. It does **not** cover all REACH restrictions. ECHA exports/SVHC/Annex XIV remain excluded. Food screening is not supported by the current product flow.
 
-The source checkout contains the application, curated seed and snapshot metadata. Full raw exports, SQLite/JSONL snapshots and private development notes are kept separately. Publishing the code does not deploy a public service.
+The source checkout contains the application, curated seed and snapshot metadata. Full raw exports, SQLite/JSONL snapshots and private development notes are kept separately.
 
 ## Run locally
 
@@ -48,9 +48,9 @@ export EU_REG_SNAPSHOT="/absolute/path/to/eu_reg_lists.sqlite"
 PORT=18010 .venv/bin/scan-to-check
 ```
 
-Open `http://127.0.0.1:18010/` for barcode lookup, manual labels and editable photo OCR. Stop each service with Ctrl-C in its own terminal. Use available ports; do not terminate unrelated listeners.
+Open `http://127.0.0.1:18010/` for barcode lookup, manual labels and editable photo OCR. Stop each service with Ctrl-C.
 
-An installed kit can also be started from its own launchers. Kit creation and offline installation are documented in [deploy/README.md](deploy/README.md). For Linux/Docker builds and a local HTTPS check, see the [Linux guide](deploy/linux/README.md). Docker is optional for the normal local preview. Offline installation does not make the application a complete offline checker.
+An installed kit can also be started from its own launchers. Kit creation and offline installation are documented in [deploy/README.md](deploy/README.md). For Linux/Docker builds and a local HTTPS check, see the [Linux guide](deploy/linux/README.md). Docker is optional for the normal local preview.
 
 ## How the pieces fit
 
@@ -74,15 +74,12 @@ All interfaces reuse the Python checking libraries. OCR text and product databas
 
 For the complete local quality gate, install `requirements-dev.txt` in the same environment and run `make quality PY="$PWD/.venv/bin/python"`. Browser checks require system Chrome; container checks require Docker. Check workflow results separately for the hosted platform matrix.
 
-Hosted snapshot publication and broader regulatory coverage remain deferred. No accounts, payments or recommendations engine are included.
-
-## Licenses
-
-Original code is [MIT](LICENSE). Data and vendored dependencies have separate attribution and reuse requirements; see [LICENSES.md](LICENSES.md). MIT does not relicense upstream data.
-
 Label checks include exactly resolved parenthetical candidates and “may contain”
 colorants; known slashed names stay whole. See [tokenization methodology](docs/methodology.md#label-tokenization).
 The root `eu_lint.py` / Streamlit demo is deprecated and retains a legacy
 tokenizer; use the shared CLI, API or scanner for label checks.
 
-Regulatory information, not legal advice.
+## Licenses
+
+Code is [MIT](LICENSE). Data and vendored dependencies retain their own
+[licenses and attribution requirements](LICENSES.md).

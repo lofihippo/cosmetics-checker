@@ -3,34 +3,17 @@
 Normalized EU regulatory substance data and a lookup API, shared by the linter,
 HTTP API and scanner. Coverage depends on the loaded snapshot.
 
-> Regulatory information, not legal advice. A substance with `determination:
-> "unknown"` is NOT "clean" and NOT "no restriction" — it is unverified.
+## Data sources
 
-## How the data is sourced (honesty)
+The pipeline imports official exports into a versioned snapshot. ECHA acquisition
+is disabled; normal refreshes do not contact it. Coverage depends on the loaded
+snapshot. See [methodology](../../docs/methodology.md) and
+[product scope](../../docs/product-scope.md).
 
-The pipeline **only ingests official export files** (CosIng Annex exports from
-the European Commission). It does **not** scrape ECHA or any
-official website. ECHA is **not** ingested in this release
-(acquisition is disabled/deferred).
-
-* `data/scripts/fetch.py` downloads official export files into `data/raw/`.
-  ECHA sources are configured with `enabled: false`, so a normal refresh never
-  contacts ECHA. Sources that can't be fetched (e.g. an ECHA URL would return
-  403) are recorded as **not fetched** — never scraped, never fabricated.
-* `data/scripts/normalize.py` reads those exports and produces:
-  * `data/processed/eu_reg_lists.jsonl` — one substance per line
-  * `data/processed/eu_reg_lists.sqlite` — queryable store
-  * `data/processed/metadata.json` — counts, source hashes, `data_updated_at`
-* A substance gains a **verified** determination ONLY when a rule is parsed
-  from an official export. Curated identities carried from Phase 0 stay
-  `determination: "unknown"` with no rules — they are **not** promoted to
-  verified regulatory records.
-
-Consequence: in the current build, many recognised names are present as
-identities with `determination: "unknown"`, and `count_verified_rules` may be
-`0` until CosIng exports are actually fetched and parsed. This is the
-honest state, not a bug. ECHA exports are deliberately not fetched in this
-release.
+`data/scripts/fetch.py` stages exports under `data/raw/`.
+`data/scripts/normalize.py` produces SQLite, JSONL and metadata under
+`data/processed/`. Identities without verified rules keep
+`determination: "unknown"`.
 
 ## Install
 
@@ -50,22 +33,21 @@ reg.search("25956-17-6")      # CAS
 reg.search("Red 40")          # INCI name
 reg.search("e129")            # E-number
 
-# check a single ingredient -> CheckResult (honest unknown semantics)
+# Check a single ingredient
 res = erl.check_token("red 40", reg)
 print(res.is_in_dataset, res.determination, res.status, res.regulation)
 ```
 
 `CheckResult` exposes `is_in_dataset`, `determination`, `status`, `annex`,
 `regulation`, `source_url`, `data_updated_at`, `conditions`, `resolution`, and
-the full `rules` list (a substance may carry multiple rules — cosmetic + food
-— all retained).
+the full `rules` list.
 
 ## Collision handling
 
 Names and aliases map to exactly one substance. If a name/alias is ambiguous
 (shared by two substances, or a canonical name colliding with a different
 substance's alias), it is rejected as ambiguous and resolves to `None`
-(unresolved). This never silently picks a record.
+(unresolved).
 
 ## Data model
 
@@ -77,7 +59,7 @@ substance's alias), it is rejected as ambiguous and resolves to `None`
 
 ## Licensing
 Code is MIT. Data licenses vary (CosIng = EU reuse/attribution, ECHA = its own
-terms) — see `LICENSES.md`.
+terms) — see [LICENSES.md](../../LICENSES.md).
 
 ## Shared label checks
 

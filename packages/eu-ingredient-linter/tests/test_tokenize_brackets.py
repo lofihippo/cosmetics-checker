@@ -1,4 +1,4 @@
-"""Label parsing regressions. Regulatory information, not legal advice."""
+"""Label parsing regressions."""
 import json
 from pathlib import Path
 

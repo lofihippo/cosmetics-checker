@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EU Formula Editor</title>
-  <meta name="description" content="Local structured-formula editor for the EU regulatory substance API. Regulatory information, not legal advice.">
+  <meta name="description" content="Evaluate cosmetic formulas with explicit concentrations and product context.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/playground.css">
   <link rel="stylesheet" href="/static/formula-editor.css">
@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <h1>EU Formula Editor</h1>
-    <p class="scope">Build a structured formula and evaluate it against the bounded Annex III restrictions. Developer preview only. <strong>Not</strong> a safety certificate or legal compliance determination.</p>
+    <p class="scope">Enter concentrations and product context to evaluate supported restrictions.</p>
     <p class="scope"><a class="citation-link" href="/">Back to the ingredient label playground</a></p>
   </header>
 
@@ -30,20 +30,20 @@
         <div><dt>Excluded (deferred)</dt><dd id="snap-not-included">—</dd></div>
         <div><dt>REACH Annex XVII (entry 70)</dt><dd id="snap-annex17">—</dd></div>
       </dl>
-      <p class="note">A healthy service is not an ingredient compliance determination. Missing lists are coverage gaps, not a clean result; ECHA lists are deliberately excluded from this release. REACH Annex XVII is covered only for entry 70 D4/D5/D6 cosmetic branches — not full Annex XVII or REACH coverage.</p>
+      <p class="note">Missing lists are outside this snapshot’s coverage. ECHA exports are excluded. REACH coverage is limited to the supported D4/D5/D6 cosmetic branches of Annex XVII entry 70.</p>
     </section>
 
     <!-- Ingredient rows -->
     <section id="editor" aria-labelledby="editor-h">
       <h2 id="editor-h">Formula</h2>
-      <p class="note">Optional context left blank is <strong>not supplied</strong> — it is never silently assumed ready-for-use. A numeric comparison only runs when the unit, concentration basis and required product context are provided and match the rule's canonical value.</p>
+      <p class="note">Leave unknown fields blank. Numeric comparisons require a unit, concentration basis and the product context specified by the rule.</p>
       <div id="rows" class="rows" role="group" aria-label="Formula ingredients"></div>
       <div class="row-actions">
         <button id="add-row" type="button" class="secondary-btn">Add ingredient</button>
         <button id="submit" type="button" class="primary-btn">Evaluate formula</button>
       </div>
       <div class="examples">
-        <span class="examples-label">Examples (illustrative, not recommendations):</span>
+        <span class="examples-label">Example formulas:</span>
         <button type="button" class="example-btn" data-example="supported">Supported comparison</button>
         <button type="button" class="example-btn" data-example="missing-context">Missing context</button>
         <button type="button" class="example-btn" data-example="benzene">Benzene (Annex II)</button>
@@ -63,7 +63,7 @@
   </main>
 
   <footer>
-    <p>Regulatory information, not legal advice. Unknown or unverified ingredients are <em>never</em> treated as clean. A numeric "within limit" is only a numeric comparison, not a compliance determination.</p>
+    <p>Regulatory information, not legal advice. A numeric comparison does not establish full product compliance.</p>
   </footer>
 
   <script src="/static/formula-editor.js"></script>

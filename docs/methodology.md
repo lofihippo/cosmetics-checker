@@ -379,8 +379,6 @@ its applicability is unresolved.
 
 ## Label tokenization
 
-Regulatory information, not legal advice.
-
 The public `eu_reg_lists.check_label()` and `ingredient_report()` entry points,
 CLI, GitHub Action, API and scanner use the same label tokenizer and checking
 engine in `eu-reg-lists`. Commas, semicolons, newlines and unprotected slashes split only

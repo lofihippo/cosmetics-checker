@@ -1,6 +1,5 @@
 """Offline tests for the real OpenBeautyFactsClient parsing/validation.
 
-Regulatory information, not legal advice.
 
 These exercise the ACTUAL client with an injected opener (no network) so the
 parsing, barcode preservation, bounded-read, and typed-outcome logic is verified

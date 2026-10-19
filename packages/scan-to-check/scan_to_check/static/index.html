@@ -11,7 +11,8 @@
 <body>
 <div class="wrap">
   <h1>scan-to-check <span class="badge beauty">local</span></h1>
-  <p class="sub">Barcode → cosmetic product ingredients → existing regulatory checker. Regulatory information, not legal advice.</p>  <div class="card">
+  <p class="sub">Look up a cosmetic product, photograph its label or enter ingredients.</p>
+  <div class="card">
     <form id="lookup-form">
       <label for="barcode">Product barcode</label>
       <div class="row">
@@ -52,13 +53,13 @@
     <div id="ocr-status" class="cam-status"></div>
     <p class="attrib">
       Recognition runs locally in your browser (Tesseract.js). The image is not uploaded.
-      OCR is imperfect — review and correct the text before checking. Regulatory information, not legal advice.
+      Review and correct the text before checking.
     </p>
   </div>
 
   <div class="card" id="product-card" hidden>
     <div id="product-info"></div>
-    <label for="ingredients">Ingredient label (edit before checking; product is community-supplied evidence, not a verified finding)</label>
+    <label for="ingredients">Ingredient label — review and edit before checking</label>
     <textarea id="ingredients" placeholder="AQUA, ALCOHOL, GLYCERIN, ..."></textarea>
     <div class="row check-actions">
       <button id="check-btn">Check ingredients</button>
@@ -72,13 +73,14 @@
       <span id="src-manual-attrib" hidden>
         Label text was entered or recognized locally; no product database result is shown.
       </span>
-      <span id="src-general-credit"> Regulatory evidence uses the EU CosIng regulatory snapshot. Product provenance is separate from regulatory snapshot provenance.</span>
+      <span id="src-general-credit"> Checks use the loaded EU snapshot, including CosIng. Product records are community supplied.</span>
     </div>
   </div>
 
   <div class="card" id="results-card" hidden>
     <div id="results"></div>
   </div>
+  <footer class="attrib">Regulatory information, not legal advice.</footer>
 </div>
 
 <!-- Vendored, pinned Tesseract.js v6.0.1 (Apache-2.0). Served locally; the

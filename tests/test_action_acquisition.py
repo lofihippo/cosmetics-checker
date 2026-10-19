@@ -1,6 +1,5 @@
 """Acquisition integration: acquire+verify a trusted snapshot on a fresh runner.
 
-Regulatory information, not legal advice.
 
 These tests run the ACTUAL acquisition steps from the maintained workflow YAML
 (loaded, not copied) against a local fixture HTTP server serving a copy of a real

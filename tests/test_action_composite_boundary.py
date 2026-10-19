@@ -1,6 +1,5 @@
 """Regression tests for the composite workflow/Action boundary.
 
-Regulatory information, not legal advice.
 
 These exercise the ACTUAL composite `action.yml` (its `env:`/`run:` split) and
 the report contract so that:

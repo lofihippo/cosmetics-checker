@@ -1,6 +1,5 @@
 """Regression tests for the composite output transport and publication safety.
 
-Regulatory information, not legal advice.
 
 These exercise the ACTUAL composite ``action.yml`` (its output ``value`` mapping
 to a named internal step) plus the entrypoint script's publication protections:

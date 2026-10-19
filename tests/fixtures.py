@@ -1,6 +1,5 @@
 """Shared deterministic synthetic snapshot fixtures.
 
-Regulatory information, not legal advice.
 
 The quality/acceptance/action regression suites must run on a clean checkout
 with NO production snapshot (``data/processed/*.sqlite`` / ``*.jsonl`` are

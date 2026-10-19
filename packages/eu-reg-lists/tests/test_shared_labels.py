@@ -1,4 +1,4 @@
-"""Shared label parsing regressions. Regulatory information, not legal advice."""
+"""Shared label parsing regressions."""
 import pytest
 from eu_reg_lists import Registry, Rule, Substance, check_label
 from eu_reg_lists.tokenize import tokenize

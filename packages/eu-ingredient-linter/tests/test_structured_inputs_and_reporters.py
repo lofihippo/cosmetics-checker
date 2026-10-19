@@ -6,7 +6,6 @@ the cited CSV/HTML reporters (deterministic rows, direct vs linked evidence,
 provenance, unknown/unresolved preservation, escaping). Uses an in-memory
 synthetic registry plus the real processed snapshot for the integration cases.
 
-``Regulatory information, not legal advice.``
 """
 
 from __future__ import annotations

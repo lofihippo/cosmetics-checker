@@ -1,7 +1,5 @@
 # Offline snapshot setup
 
-Regulatory information, not legal advice.
-
 A new checkout does not contain the gitignored regulatory data. Transfer an
 existing, verified snapshot with these transfer commands; verify/import do not
 fetch or normalize data. The accepted local checkpoint now includes CosIng
@@ -161,4 +159,4 @@ completed durable publication. Actual hosted acceptance remains a separately
 recorded step until a repository and destination host are configured.
 
 Synthetic update fixtures (`--source-file KEY=PATH`) are **test fixtures only**
-and never become live verified data. Regulatory information, not legal advice.
+and are not promoted to the verified dataset.

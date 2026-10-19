@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Build a reproducible LOCAL release kit for the eu-reg services.
 
-Regulatory information, not legal advice.
 
 This script produces a self-contained, source-independent local release kit
 directory that you can inspect, install and run locally. It does NOT publish,

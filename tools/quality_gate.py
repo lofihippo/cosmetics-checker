@@ -1,44 +1,9 @@
-#!/usr/bin/env python3
-"""Local quality gate for cosmetics-checker.
+"""Run the local test, coverage, lint and type-check stages.
 
-Regulatory information, not legal advice.
-
-This provides ONE documented command for the release-quality checks that CANNOT
-turn a failure into success. It has two subcommands:
-
-  * ``coverage`` -- measures line coverage over a TRANSPARENT, explicitly named
-    parser/normalizer/checker denominator (the actual CosIng/ECHA parsers,
-    normalize, eu-reg-lists registry/checker/models and the linter
-    normalization/evaluation modules) using the appropriate existing tests. It
-    writes per-file and aggregate evidence to a temp dir (or --out) as JSON and
-    prints a readable summary.
-
-    It is a THIN SUBPROCESS ORCHESTRATOR around the standard tooling
-    (``coverage run -m pytest`` then the public ``coverage json`` report). It
-    never rounds an under-target result into a pass and it never overrides a
-    non-zero pytest result (failed tests, collection errors, interruption, no
-    tests, internal error) with a passing coverage percentage.
-
-    Coverage.py's source configuration is used so that required source files
-    that are NOT executed by the tests still contribute their REAL executable
-    statement counts as zero coverage: missing or unmeasured required source
-    never improves the aggregate. Missing source files (or an unavailable
-    analysis) are a measurement-integrity failure, not a success.
-
-  * ``lint`` -- runs ruff over the scoped canonical source (or ``--full`` over
-    the repo) and returns non-zero on any finding; a missing tool is a hard
-    error (exit 2), never a successful skip.
-
-  * ``check`` -- orchestrates ALL required stages (tests, named-core coverage,
-    scoped lint, mypy types) in one documented command, reporting each stage and
-    returning non-zero if ANY required stage fails. A missing stage tool is a
-    hard error (exit 2), never a successful skip. If broader pre-existing debt
-    keeps a stage red, the stage's real status is reported rather than hidden.
-
-The denominator is NOT gamed: it includes the data pipeline writers
-(normalize.py, cosing_parser.py, echa_parser.py) plus the registry/checker and
-the linter normalization/evaluation modules. ``--full`` reports whole-package
-coverage across the maintained source, discovered recursively.
+Core coverage uses the explicit CORE_FILES denominator, including unexecuted
+source files. --full measures all maintained package modules. Missing tools,
+missing source and nonzero test exits fail the gate. Detailed logs and JSON
+coverage reports are written to a temporary directory or the supplied --out.
 """
 from __future__ import annotations
 

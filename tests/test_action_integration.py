@@ -1,6 +1,5 @@
 """Integration regressions for the reusable Action's failure/verification path.
 
-Regulatory information, not legal advice.
 
 These are executable regressions around the ACTUAL wrapper/entrypoint/CLI, not
 YAML string searches. Where a Docker daemon is available they exercise the full

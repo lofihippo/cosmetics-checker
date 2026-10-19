@@ -1,6 +1,5 @@
 """Shared release policy: which EU source lists are deliberately excluded.
 
-Regulatory information, not legal advice.
 
 This is a single source of truth for the CosIng-focused release boundary. It is
 imported by:

@@ -13,7 +13,6 @@ and the Registry, but NEVER touch the workspace data/ raw or processed artifacts
     and recorded separately from quarantines.
   * Genuine conflicting identifiers are still rejected (quarantined).
 
-Regulatory information, not legal advice.
 """
 
 from __future__ import annotations

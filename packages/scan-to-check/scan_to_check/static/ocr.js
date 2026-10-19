@@ -1,48 +1,12 @@
-/* OCR lifecycle controller for the scan-to-check ingredient-label photo path.
+/* OCR session controller: validates images, manages previews and owns workers.
+ * A session/attempt identity guards asynchronous callbacks. New selections and
+ * cancellation retire earlier work and release object URLs. Workers are reused
+ * within a session and terminated on session changes or recognition failures.
  *
- * Regulatory information, not legal advice.
- *
- * A SMALL, focused controller that owns every part of the OCR lifecycle in one
- * place: image selection/validation, the preview, pending worker
- * initialization, the resolved worker, the active recognition job, progress and
- * error callbacks, and object-URL / worker-termination cleanup.
- *
- * Design goals (from the independent review that motivated this split):
- *   1. ONE immutable session identity binds the chosen File, its preview and its
- *      recognition job. Every file selection -- including empty, invalid or
- *      oversized replacements -- retires any earlier validation/recognition, so
- *      a stale completion can never populate a newer draft or enable a newer
- *      invalid file.
- *   2. Every asynchronous operation is an ATTEMPT that captures its own
- *      immutable session id and is only allowed to touch the current worker,
- *      status, controls and busy flags while it is still the active owner.
- *      Old success/error/progress/finally callbacks never mutate a newer
- *      session. Recognition is bound to the controller's validated File (and
- *      its object URL), never reread from an unchecked DOM file input.
- *   3. Real asset-failure handling is bounded AND owned. A worker/core/model
- *      load error is surfaced as an actionable message (manual fallback +
- *      retry) and never leaves the UI stuck at "Loading OCR engine…". Because
- *      Tesseract.js v6.0.1 does NOT settle its createWorker promise on a
- *      `loadLanguage` (traineddata) failure, the controller captures the native
- *      Web Worker that Tesseract spawns (via a narrow, version-coupled
- *      compatibility adapter that temporarily replaces the global `Worker`
- *      constructor only for the synchronous createWorker call and restores it
- *      before returning) and terminates THAT handle directly, so no orphan
- *      native Worker accumulates.
- *   4. Empty recognition is reported as "No text found", never as a successful
- *      ingredient extraction; the user still gets the editable-draft path.
- *
- * Worker ownership policy (intentional + documented): the worker is created
- * lazily and REUSED for a retry within the current session; it is DISPOSED on
- * any session change (new image, cancel, mode change, page exit, dispose) and
- * on any real recognition failure (so a poisoned worker is not reused). Thus no
- * worker survives a stale session and no unbounded set of workers accumulates.
- * Object URLs are always released on session retirement.
- *
- * The controller is dependency-free: it receives the Tesseract factory and the
- * DOM element handles from the caller, so the real engine and the deterministic
- * browser test stub exercise the SAME lifecycle code. It never silently submits
- * OCR output or infers concentrations.
+ * Tesseract 6.0.1 can leave createWorker pending after a model-load failure.
+ * The adapter below captures its native Worker for cleanup and bounds startup
+ * with a timeout. Recheck the adapter when changing the pinned version.
+ * Recognized text remains an editable draft until the user submits it.
  */
 (function (global) {
   "use strict";

@@ -214,7 +214,7 @@ Demonstrates below/at/above a limit, missing context, mismatched basis, a
 complex rule, a cross-annex exception, an unknown ingredient, and a missing
 concentration.
 
-## Honesty
+## Interpreting results
 
-"Regulatory information, not legal advice." A numeric "within limit" is never a
-safety certificate or compliance determination.
+A numeric "within limit" result does not resolve other conditions or establish
+full product compliance. See [product scope](product-scope.md).

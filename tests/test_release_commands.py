@@ -1,6 +1,5 @@
 """Executable regressions for the generated release-command artifacts.
 
-Regulatory information, not legal advice.
 
 These tests exercise the *generated* launcher and installer shell scripts (and
 the builder helpers that produce them) rather than only the helper strings, so

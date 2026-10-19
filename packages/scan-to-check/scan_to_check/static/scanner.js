@@ -1,8 +1,4 @@
-// Regulatory information, not legal advice.
-
 (() => {
-  const DISC = "Regulatory information, not legal advice.";
-
   const el = (id) => document.getElementById(id);
   const barcodeEl = el("barcode");
   const ingredientsEl = el("ingredients");
@@ -524,8 +520,6 @@
       " — missing: " + ((cov.missing || []).join(", ") || "none") +
       " — not included (deliberately deferred): " + ((cov.not_included || []).join(", ") || "none") +
       ". " + (cov.note || "")));
-    const d = make("div", "attrib", resultsEl);
-    d.appendChild(textNode(DISC + "  Product provenance is separate from regulatory evidence."));
     resultsEl.hidden = false;
     resultsCard.hidden = false;
   }

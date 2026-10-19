@@ -191,7 +191,7 @@
   // ---- check ----
   function verdictLabel(v, clean) {
     if (clean) return "No EU ban/restriction triggered for every fully verified ingredient (not a safety certificate).";
-    if (v === "FLAGGED") return "At least one banned/restricted/conditional rule, or a retained REACH entry 70 restriction, was identified. A conditional allowance (Annex IV/V/VI positive list) is not a clean/green result; any identified-but-unevaluated restriction requires the missing context before applicability is established.";
+    if (v === "FLAGGED") return "At least one rule was identified. Review each finding for conditions and missing context; a match alone does not establish a violation.";
     if (v === "NO-INGREDIENTS") return "No ingredient tokens were parsed.";
     return "Not fully verified: one or more ingredients are unknown or unresolved.";
   }

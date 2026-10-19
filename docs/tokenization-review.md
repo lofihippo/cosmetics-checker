@@ -1,7 +1,5 @@
 # Label-tokenization regression evidence
 
-Regulatory information, not legal advice.
-
 Results use the retained curated seed (`data/eu_flags.json`), not newly acquired regulatory data. Tokens below are separated with ` · `. The original tokenizer was captured before edits.
 
 | Input | Before | After | Banned findings before → after |

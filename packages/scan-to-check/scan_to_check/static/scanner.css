@@ -1,5 +1,3 @@
-/* Regulatory information, not legal advice. */
-
 :root { --bg:#f6f7f9; --card:#fff; --ink:#1c1f23; --mut:#5b6270; --line:#d9dde3; --accent:#2f5fd0; --err:#b3261e; }
 * { box-sizing:border-box; }
 body { margin:0; font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }

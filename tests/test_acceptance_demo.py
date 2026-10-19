@@ -1,6 +1,5 @@
 """Command-level regressions for the acceptance runner (examples/acceptance_demo.py).
 
-Regulatory information, not legal advice.
 
 These verify the reproduced defects are fixed:
   * a required condition that fails (impossible timing target / wrong exit probe)

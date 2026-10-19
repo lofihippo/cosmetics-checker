@@ -412,7 +412,7 @@
     var h = el("h3", null, summaryEl);
     h.textContent = "Formula evaluation";
     el("p", null, summaryEl).textContent =
-      "Every ingredient result is reported with its own rule status, applicability, numeric comparison and unresolved requirements. A numeric \"within limit\" is not a compliance determination.";
+      "Review each ingredient’s comparison and unresolved requirements.";
     el("p", null, summaryEl).textContent =
       "data_updated_at: " + (data.data_updated_at || "Not provided");
     if (data.coverage) {
@@ -667,7 +667,7 @@
       clearRows();
       rows.forEach(function (r) { addIngredientRow(r); });
       renumberRows();
-      setStatus("Loaded example (illustrative, not a recommendation).", null);
+      setStatus("Example loaded.", null);
     });
   });
 

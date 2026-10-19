@@ -1,6 +1,5 @@
 """Locally reproduce the refresh-data workflow audit-retention shell logic.
 
-Regulatory information, not legal advice.
 
 The workflow's ``Restore and refresh isolated snapshot`` step now delegates the
 ENTIRE run block to the shared executable body ``data/scripts/

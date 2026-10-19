@@ -6,7 +6,6 @@ the formula's definitive-prohibition exit, while an unconditional ban like
 Benzene retains ``unambiguous`` and exit 1. The unevaluated conditions of a
 retained positive-list / multi-list rule are surfaced in ``unresolved_requirements``.
 
-Regulatory information, not legal advice.
 """
 
 from __future__ import annotations

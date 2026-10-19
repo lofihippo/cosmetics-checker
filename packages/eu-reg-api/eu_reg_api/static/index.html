@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EU Regulatory Substance Playground</title>
-  <meta name="description" content="Local developer playground for the EU regulatory substance API. Regulatory information, not legal advice.">
+  <meta name="description" content="Check cosmetic ingredient labels against the loaded EU regulatory snapshot.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/playground.css">
 </head>
 <body>
   <header class="topbar">
     <h1>EU Regulatory Substance Playground</h1>
-    <p class="scope">Developer preview only. <strong>Not</strong> a safety certificate or legal compliance determination. Regulatory information, not legal advice.</p>
-    <p class="scope"><a class="citation-link" href="/formula">Open the formula editor</a> (structured-formula evaluation via <code>POST /v1/check-formula</code>).</p>
+    <p class="scope">Check an ingredient label against the loaded EU regulatory snapshot.</p>
+    <p class="scope"><a class="citation-link" href="/formula">Open the formula editor</a> for ingredients with concentrations.</p>
   </header>
 
   <main>
@@ -30,7 +30,7 @@
         <div><dt>Excluded (deferred)</dt><dd id="snap-not-included">—</dd></div>
         <div><dt>REACH Annex XVII (entry 70)</dt><dd id="snap-annex17">—</dd></div>
       </dl>
-      <p class="note">A healthy service is not an ingredient compliance determination. Missing lists are coverage gaps, not a clean result; ECHA lists are deliberately excluded from this release. REACH Annex XVII is covered only for entry 70 D4/D5/D6 cosmetic branches — not full Annex XVII or REACH coverage.</p>
+      <p class="note">Missing lists are outside this snapshot’s coverage. ECHA exports are excluded. REACH coverage is limited to the supported D4/D5/D6 cosmetic branches of Annex XVII entry 70.</p>
     </section>
 
     <!-- Ingredient input -->
@@ -42,7 +42,7 @@
         spellcheck="false"></textarea>
       <div class="field-meta">
         <span id="char-count">0 / 10,000 characters</span>
-        <span class="hint">The API also limits the number of parsed ingredient tokens.</span>
+        <span class="hint">Up to 200 parsed ingredients.</span>
       </div>
       <div class="examples">
         <span class="examples-label">Try an example:</span>

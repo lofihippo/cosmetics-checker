@@ -1,7 +1,5 @@
 # Licenses and attribution
 
-Regulatory information, not legal advice.
-
 ## Original code
 
 Original project code is licensed under [MIT](LICENSE). This does not relicense

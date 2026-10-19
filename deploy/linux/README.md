@@ -1,7 +1,5 @@
 # Linux and Docker
 
-Regulatory information, not legal advice.
-
 Docker is optional for the local app. These tools build a Linux release kit
 and validate both services over loopback HTTPS. They do not provision a public
 host. A verified snapshot bundle is required; no full dataset comes with a clone.

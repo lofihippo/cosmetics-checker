@@ -1,7 +1,5 @@
 # Local release kit
 
-Regulatory information, not legal advice.
-
 This directory builds the **reproducible, source-independent local release kit**
 for the two runnable services:
 
@@ -101,7 +99,7 @@ make deploy-build DEPLOY_DEST=/tmp/eu-release-kit
 make deploy-build-consume-existing DEPLOY_BUNDLE=/tmp/verified.zip DEPLOY_DEST=/tmp/eu-release-kit
 ```
 
-## Coverage honesty
+## Coverage
 
 Inspect the supplied snapshot for its exact coverage. The current local snapshot
 contains **Annex II–VI** (CosIng) and the supported cosmetic branches of **REACH
@@ -113,7 +111,7 @@ exclusion, **never** a clean result. A bundle that verifies but carries deferred
 data is rejected for release (export and deployment boundaries both enforce
 this).
 
-## Hosting decisions (NOT done here)
+## Hosting requirements
 
 Public hosting requires decisions the user must make independently of this
 package: host provider/region and data-reuse terms (CosIng EU-reuse, ODbL

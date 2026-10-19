@@ -1,7 +1,5 @@
 # EU Ingredient Linter — reusable GitHub Action
 
-Regulatory information, not legal advice.
-
 A reusable Action that checks a cosmetic ingredient file (CSV/TSV/JSON) against a
 **fully verified, explicitly supplied** EU-regulatory snapshot, emits GitHub
 workflow annotations, and preserves a cited JSON report for artifact upload. It

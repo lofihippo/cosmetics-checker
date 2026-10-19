@@ -1,42 +1,9 @@
-"""Structured CSV/TSV ingredient input adapter.
+"""Read one formula from CSV/TSV, preserving decimal strings and absent context.
 
-Reads a single structured file that represents ONE formula: one ingredient per
-record, with a required ``ingredient`` column and optional ``percent``,
-``unit``, ``basis``, ``product_type``, ``body_area``, ``professional_use``,
-``ready_for_use`` and ``assessment_date`` columns. The parsed records are
-turned into the SAME formula dict consumed by
-:func:`eu_ingredient_linter.formula.evaluate_formula`, so validation
-(decimal-safe percentages, three-state booleans, ISO assessment dates,
-duplicate resolved identities) is shared — a second evaluator is never built.
-
-Schema and conventions (also documented in README):
-
-  * Each non-blank record is one ingredient entry.
-  * ``ingredient`` (required): an exact name or identifier. A blank
-    ``ingredient`` on a row that otherwise has data is a *partially completed*
-    unnamed row and is rejected with its record location.
-  * ``percent`` (optional): a decimal concentration. Kept as a string until the
-    shared ``Decimal`` validation. A blank cell is **absent** (never 0).
-  * ``unit`` / ``basis`` / ``product_type`` / ``body_area`` (optional): explicit
-    context string. A blank cell is **absent** (never inferred).
-  * ``professional_use`` / ``ready_for_use`` (optional): explicit booleans. Only
-    the documented true/false spellings are accepted; a blank cell is absent;
-    any other nonempty text is rejected rather than coerced to true.
-  * ``assessment_date`` (optional): an ISO-8601 assessment date (``YYYY-MM-DD``).
-    A supplied but malformed date is rejected (never silently ignored); a blank
-    cell is absent.
-
-Invalid records are never silently skipped: malformed row shapes, duplicate
-headers, unsupported columns, malformed booleans, and partially completed
-unnamed rows all raise :class:`ValueError` (the CLI turns this into exit 2 with
-no traceback and no partial success report).
-
-A fully blank record (every cell empty) is ignored. Delimiter (``,`` for CSV,
-``\\t`` for TSV) and UTF-8 / UTF-8 BOM handling are handled by the standard
-:mod:`csv` + :mod:`io` modules. Decimal separators use ``.`` (a comma inside a
-quoted ``percent`` cell is preserved and validated by the shared parser).
-
-``Regulatory information, not legal advice.``
+The ingredient column is required. Blank records are ignored; partial unnamed
+rows, duplicate headers, unsupported columns and malformed values raise
+ValueError with a record location. UTF-8 BOM and standard CSV quoting are
+supported. The resulting records use the shared formula validator.
 """
 
 from __future__ import annotations

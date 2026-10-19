@@ -1,4 +1,4 @@
-"""Offline snapshot integrity. Regulatory information, not legal advice."""
+"""Offline snapshot integrity."""
 
 import hashlib
 import json
